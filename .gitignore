@@ -1,0 +1,6 @@
+# Mac clutter
+.DS_Store
+
+# Old copies — git remembers every version now, so these aren't needed online
+backups/
+Claude outputs/
