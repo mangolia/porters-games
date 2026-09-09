@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- Porter's game - Level Three. Spear or machine gun. -->
+<title>Spear Guy — Level Three</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=JetBrains+Mono:wght@400;700&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+  :root{
+    --bg:#EFECE5;--surface:#FFFFFF;--sunk:#F6F4EF;--ink:#181C24;--muted:#6A7080;
+    --line:#DCD7CC;--accent:#C2410C;--flag:#8A6410;--flag-soft:#FBF1D8;
+    --display:"Archivo Black","Arial Black",system-ui,sans-serif;
+    --body:"Source Sans 3",system-ui,-apple-system,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#11141B;--surface:#1A1E29;--sunk:#151922;--ink:#E9E5DB;--muted:#8A92A4;
+    --line:#2A3040;--accent:#FF7A45;--flag:#FFD166;--flag-soft:#2A2413;}}
+  :root[data-theme="dark"]{
+    --bg:#11141B;--surface:#1A1E29;--sunk:#151922;--ink:#E9E5DB;--muted:#8A92A4;
+    --line:#2A3040;--accent:#FF7A45;--flag:#FFD166;--flag-soft:#2A2413;}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.55;
+       padding:28px 20px 68px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:940px;margin:0 auto;display:flex;flex-direction:column;gap:24px}
+  header{display:flex;flex-direction:column;gap:7px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+          color:var(--accent);font-weight:700}
+  h1{font-family:var(--display);font-size:clamp(34px,6.5vw,58px);line-height:.95;margin:0;letter-spacing:-.015em}
+  .sub{color:var(--muted);max-width:62ch;font-size:17px;margin:0}
+  .stage{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#161E30}
+  canvas{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair}
+  .hud{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;padding:11px 15px;
+       background:var(--surface);border-top:1px solid var(--line)}
+  .stat{display:flex;align-items:baseline;gap:7px}
+  .stat b{font-family:var(--mono);font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+  .stat span{font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+  #hearts{font-size:17px;letter-spacing:2px}
+  .spacer{flex:1}
+  button{font-family:var(--body);font-weight:600;font-size:14px;padding:7px 15px;cursor:pointer;
+         border:1px solid var(--line);border-radius:4px;background:transparent;color:var(--ink)}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .keys{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+  .key{background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:13px 16px}
+  .key h4{font-family:var(--display);font-size:13px;margin:0 0 3px}
+  .key p{margin:0;font-size:14px;color:var(--muted)}
+  kbd{font-family:var(--mono);font-size:12px;background:var(--sunk);border:1px solid var(--line);
+      border-radius:3px;padding:1px 6px;color:var(--ink)}
+  .horde{background:var(--surface);border:2px solid var(--accent);border-radius:6px;padding:19px 21px;
+         display:flex;flex-wrap:wrap;gap:14px 18px;align-items:center}
+  .horde>div{flex:1 1 380px}
+  .horde h3{font-family:var(--display);font-size:17px;margin:0 0 4px;color:var(--accent)}
+  .horde p{margin:0;font-size:14px;color:var(--muted);max-width:60ch}
+  .horde button{background:var(--accent);color:#fff;border-color:var(--accent);
+                font-family:var(--display);font-size:14px;padding:11px 20px}
+  .horde button:hover{opacity:.88;color:#fff}
+  .horde button.ghost{background:transparent;color:var(--ink);border-color:var(--line);
+                      font-family:var(--body);font-weight:600}
+  .horde button.ghost:hover{border-color:var(--accent);color:var(--accent)}
+  .weapons button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .weapons button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+  .note{border:1px solid var(--line);border-left:4px solid var(--flag);background:var(--flag-soft);
+        padding:15px 19px;border-radius:0 5px 5px 0}
+  .note h4{font-family:var(--display);font-size:15px;margin:0 0 6px}
+  .note p{margin:0;max-width:64ch}
+  .dials{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:19px;
+         background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:19px 21px}
+  .dials-head{grid-column:1/-1;padding-bottom:4px;border-bottom:1px solid var(--line)}
+  .dials-head h2{font-family:var(--display);font-size:15px;margin:0}
+  .dials-head p{margin:2px 0 0;color:var(--muted);font-size:14px}
+  .grp{grid-column:1/-1;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+       text-transform:uppercase;color:var(--accent);font-weight:700;margin-top:3px}
+  .dial label{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:4px}
+  .dial .nm{font-weight:600;font-size:14px}
+  .dial .vl{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+  .dial .hint{color:var(--muted);font-size:12.5px;margin:4px 0 0}
+  input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer}
+  input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">Porter's game · build step 4 · the boss</div>
+    <h1>Level Three</h1>
+    <p class="sub">You're on the hilltop. A tank is grinding up the slick slope at you and foot soldiers are marching up beside it, throwing spears. To win you must destroy the tank <em>and</em> drop every last soldier. Shells can be knocked out of the air.</p>
+  </header>
+
+  <div class="stage">
+    <canvas id="game" width="900" height="500" aria-label="Level three: tank and foot soldiers climbing a slippery hill"></canvas>
+    <div class="hud">
+      <div class="stat"><b id="hearts">♥♥♥♥♥</b><span>health</span></div>
+      <div class="stat"><b id="ammo">45</b><span>spears</span></div>
+      <div class="stat"><b id="hits">0/18</b><span>tank damage</span></div>
+      <div class="stat"><b id="blocked">0</b><span>blocked</span></div>
+      <div class="stat"><b id="dropped">0/8</b><span>guys dropped</span></div>
+      <div class="stat"><b id="flip">READY</b><span>backflip</span></div>
+      <div class="spacer"></div>
+      <button id="reset">Reset (R)</button>
+    </div>
+  </div>
+
+  <div class="keys">
+    <div class="key"><h4>Aim &amp; throw</h4><p>Move the mouse. Hold to charge, let go.</p></div>
+    <div class="key"><h4>Backflip</h4><p><kbd>Space</kbd>. Untouchable mid-spin.</p></div>
+    <div class="key"><h4>Block a shell</h4><p>Throw a spear at it. Your spear keeps going.</p></div>
+    <div class="key"><h4>The marching guys</h4><p>One spear each. They tumble down the hill.</p></div>
+    <div class="key"><h4>Reset</h4><p><kbd>R</kbd>.</p></div>
+  </div>
+
+  <div class="horde weapons">
+    <div>
+      <h3>Which weapon?</h3>
+      <p>The spear arcs and has to be charged &mdash; that's the aiming skill your whole game is built on. The machine gun sprays. It feels great and it makes aiming almost free, so the tank gets a lot tougher to keep it interesting.</p>
+    </div>
+    <button id="w-spear" class="on">Spear</button>
+    <button id="w-gun" class="ghost">Machine gun</button>
+  </div>
+
+  <div class="horde">
+    <div>
+      <h3>Want the whole army?</h3>
+      <p>100 guys plus the tank. That's <strong>118 spears that all have to hit</strong>, so this button also gives you 170 spears, 25 health, and a much faster backflip. It is almost certainly unfair. That's the point &mdash; go find out what breaks.</p>
+    </div>
+    <button id="horde">Send 100 guys</button>
+    <button id="calm" class="ghost">Back to normal</button>
+  </div>
+
+  <div class="note">
+    <h4>Porter's block move</h4>
+    <p>Hit an orange shell in mid-air and it pops &mdash; and your spear <strong>carries straight on through</strong>, so it can still hit the tank or a soldier behind it. One throw can block <em>and</em> damage. That was Porter's idea and it's the best thing in the game.</p>
+    <p style="margin-top:7px">Note: blocking works on <em>shells</em>. The soldiers' blue-tipped spears go past &mdash; backflip those.</p>
+  </div>
+
+  <div class="dials">
+    <div class="dials-head">
+      <h2>The dials</h2>
+      <p>Porter's spear settings, plus everything about the tank and the hill.</p>
+    </div>
+
+    <div class="grp">Porter's spear settings</div>
+    <div class="dial"><label><span class="nm">Gravity</span><span class="vl" id="v-grav">200</span></label>
+      <input type="range" id="d-grav" min="100" max="2200" step="50" value="200">
+      <p class="hint">Porter's pick: 200.</p></div>
+    <div class="dial"><label><span class="nm">Max power</span><span class="vl" id="v-pow">2000</span></label>
+      <input type="range" id="d-pow" min="400" max="2600" step="50" value="2000">
+      <p class="hint">Porter's pick: 2000.</p></div>
+    <div class="dial"><label><span class="nm">Charge time</span><span class="vl" id="v-chg">0.2s</span></label>
+      <input type="range" id="d-chg" min="0.1" max="3" step="0.1" value="0.2">
+      <p class="hint">Porter's pick: 0.2s.</p></div>
+    <div class="dial"><label><span class="nm">Your spears</span><span class="vl" id="v-ammo">45</span></label>
+      <input type="range" id="d-ammo" min="5" max="250" step="1" value="45">
+      <p class="hint">Now 45. You need 18 on the tank <em>plus</em> 8 on the guys &mdash; that's 26 hits before a single miss or block.</p></div>
+
+    <div class="grp">The tank</div>
+    <div class="dial"><label><span class="nm">Hits to destroy it</span><span class="vl" id="v-need">18</span></label>
+      <input type="range" id="d-need" min="1" max="50" step="1" value="18">
+      <p class="hint">Porter's design doc said 10. Now 18 &mdash; a real boss. <strong>Watch out:</strong> you can't need more hits than you have spears.</p></div>
+    <div class="dial"><label><span class="nm">Engine power</span><span class="vl" id="v-eng">200</span></label>
+      <input type="range" id="d-eng" min="40" max="500" step="10" value="200">
+      <p class="hint">How hard it pushes up the hill. At 200 on a Slick hill it reaches you in about 18 seconds &mdash; that's your time limit.</p></div>
+    <div class="dial"><label><span class="nm">How slippery</span><span class="vl" id="v-slip">Slick</span></label>
+      <input type="range" id="d-slip" min="0" max="100" step="5" value="55">
+      <p class="hint">Slippery hill = it slides back and struggles. At 0 it just drives right up at you.</p></div>
+    <div class="dial"><label><span class="nm">How often it shoots</span><span class="vl" id="v-rate">2.2s</span></label>
+      <input type="range" id="d-rate" min="0.5" max="5" step="0.1" value="2.2">
+      <p class="hint">Faster shooting means more blocking and less attacking.</p></div>
+    <div class="dial"><label><span class="nm">Shell speed</span><span class="vl" id="v-bspd">520</span></label>
+      <input type="range" id="d-bspd" min="200" max="1200" step="20" value="520">
+      <p class="hint">Slow shells are easy to knock down. Fast ones are nearly impossible.</p></div>
+
+    <div class="grp">Machine gun</div>
+    <div class="dial"><label><span class="nm">Fire rate</span><span class="vl" id="v-gap">11/sec</span></label>
+      <input type="range" id="d-gap" min="0.03" max="0.5" step="0.01" value="0.09">
+      <p class="hint">How fast it spits bullets while you hold the button.</p></div>
+    <div class="dial"><label><span class="nm">Bullet speed</span><span class="vl" id="v-bspd2">1900</span></label>
+      <input type="range" id="d-bspd2" min="600" max="3000" step="50" value="1900">
+      <p class="hint">Fast bullets fly almost flat &mdash; no arc to judge. That's what makes the gun easy.</p></div>
+
+    <div class="grp">The marching guys</div>
+    <div class="dial"><label><span class="nm">How often one shows up</span><span class="vl" id="v-trate">4.0s</span></label>
+      <input type="range" id="d-trate" min="0.2" max="10" step="0.2" value="4">
+      <p class="hint">A new guy walks on this often. Lower = a flood.</p></div>
+    <div class="dial"><label><span class="nm">Most at once</span><span class="vl" id="v-tmax">3</span></label>
+      <input type="range" id="d-tmax" min="0" max="30" step="1" value="3">
+      <p class="hint">Set to 0 for tank only, like it was before.</p></div>
+    <div class="dial"><label><span class="nm">How many guys in total</span><span class="vl" id="v-ttot">8</span></label>
+      <input type="range" id="d-ttot" min="0" max="100" step="1" value="8">
+      <p class="hint">The whole squad, up to 100. You must drop <strong>every one</strong> AND kill the tank. Each guy costs at least one spear, so check your spear count.</p></div>
+    <div class="dial"><label><span class="nm">March speed</span><span class="vl" id="v-tspd">34</span></label>
+      <input type="range" id="d-tspd" min="10" max="140" step="2" value="34">
+      <p class="hint">How fast they walk up at you. One spear drops a guy.</p></div>
+    <div class="dial"><label><span class="nm">How often they throw</span><span class="vl" id="v-tthr">4.5s</span></label>
+      <input type="range" id="d-tthr" min="0.6" max="8" step="0.2" value="4.5">
+      <p class="hint">Each guy throws this often. Five of them adds up fast.</p></div>
+
+    <div class="grp">You</div>
+    <div class="dial"><label><span class="nm">Your health</span><span class="vl" id="v-hp">5</span></label>
+      <input type="range" id="d-hp" min="1" max="40" step="1" value="5">
+      <p class="hint">How many shells you can eat before the level restarts.</p></div>
+    <div class="dial"><label><span class="nm">Flip cooldown</span><span class="vl" id="v-cd">1.2s</span></label>
+      <input type="range" id="d-cd" min="0" max="4" step="0.1" value="1.2">
+      <p class="hint">Still a placeholder &mdash; Porter hasn't picked the flip's real cost.</p></div>
+  </div>
+</div>
+<script>(function () {
+  "use strict";
+  var cv = document.getElementById("game"), ctx = cv.getContext("2d");
+  var W = 900, H = 500;
+
+  var T = {
+    gravity: 200, maxPower: 2000, minPower: 280, chargeTime: 0.2, ammo: 45,
+    maxHp: 5, need: 18, engine: 200, slip: 55, fireRate: 2.2, shellSpeed: 520,
+    flipCooldown: 1.2, flipTime: 0.55, spearLife: 10, danceSpeed: 1.6,
+    weapon: "spear", fireGap: 0.09, bulletSpeed: 1900,
+    troopRate: 4, troopSpeed: 34, troopThrow: 4.5, troopMax: 3, troopTotal: 8
+  };
+
+  // ---- The hill. Peak on the left, sloping down to the right. --------------
+  function hillY(x) {
+    var t = Math.max(0, Math.min(1, x / W));
+    return 150 + 330 * Math.pow(t, 1.6);   // steeper: taller peak, sharper drop
+  }
+  var TANK = 1.45;                          // the tank is bigger now
+  function steepness(x) { return (hillY(x + 3) - hillY(x - 3)) / 6; }  // how tilted here
+
+  var YOU = { x: 112, feet: hillY(112) };
+  var HAND = { x: YOU.x + 14, y: YOU.feet - 42 };
+
+  var tank = null, troops = [], nextTroop = 3, spawned = 0, tankBoom = null;
+  var mySpears = [], shells = [], sparks = [];
+  var ammo = T.ammo, hp = T.maxHp, hits = 0, blocked = 0, dropped = 0;
+  var charging = false, chargeStart = 0, aim = { x: 600, y: 300 };
+  var firing = false, nextShot = 0;
+  var now = 0, over = null, overAt = 0;
+  var state = "stand", flipStart = 0, lastFlip = -99;
+
+  function makeTank() {
+    return { x: 862, v: 0, next: 2.5, grip: 1, gripUntil: 0, shake: 0, dead: false };
+  }
+
+  function dial(id, valId, apply, fmt) {
+    var el = document.getElementById(id), out = document.getElementById(valId);
+    function upd() { var n = parseFloat(el.value); apply(n); out.textContent = fmt ? fmt(n) : n; }
+    el.addEventListener("input", upd); upd();
+  }
+  var s1 = function (n) { return n.toFixed(1) + "s"; };
+  dial("d-grav","v-grav",function(n){T.gravity=n;});
+  dial("d-pow","v-pow",function(n){T.maxPower=n;});
+  dial("d-chg","v-chg",function(n){T.chargeTime=n;},s1);
+  dial("d-ammo","v-ammo",function(n){var f=ammo===T.ammo;T.ammo=n;if(f)ammo=n;if(ammo>n)ammo=n;hud();});
+  dial("d-need","v-need",function(n){T.need=n;hud();});
+  dial("d-eng","v-eng",function(n){T.engine=n;});
+  dial("d-slip","v-slip",function(n){T.slip=n;},
+       function(n){return n===0?"None":n<=25?"Grippy":n<=50?"Loose":n<=75?"Slick":"Ice";});
+  dial("d-rate","v-rate",function(n){T.fireRate=n;},s1);
+  dial("d-bspd","v-bspd",function(n){T.shellSpeed=n;});
+  dial("d-trate","v-trate",function(n){T.troopRate=n;},s1);
+  dial("d-tmax","v-tmax",function(n){T.troopMax=n;});
+  dial("d-ttot","v-ttot",function(n){T.troopTotal=n;hud();});
+  dial("d-tspd","v-tspd",function(n){T.troopSpeed=n;});
+  dial("d-tthr","v-tthr",function(n){T.troopThrow=n;},s1);
+  dial("d-gap","v-gap",function(n){T.fireGap=n;},
+       function(n){return Math.round(1/n)+"/sec";});
+  dial("d-bspd2","v-bspd2",function(n){T.bulletSpeed=n;});
+  dial("d-hp","v-hp",function(n){var f=hp===T.maxHp;T.maxHp=n;if(f)hp=n;if(hp>n)hp=n;hud();});
+  dial("d-cd","v-cd",function(n){T.flipCooldown=n;},
+       function(n){return n===0?"none":n.toFixed(1)+"s";});
+
+  function pointAt(e){var r=cv.getBoundingClientRect(),p=e.touches?e.touches[0]:e;
+    aim.x=(p.clientX-r.left)*(W/r.width);aim.y=(p.clientY-r.top)*(H/r.height);}
+  function power(){return T.minPower+(T.maxPower-T.minPower)*Math.min((now-chargeStart)/T.chargeTime,1);}
+  function velTo(tx,ty,fx,fy,p){var dx=tx-fx,dy=ty-fy,L=Math.hypot(dx,dy)||1;
+    return {vx:dx/L*p,vy:dy/L*p};}
+  function leadShot(fx,fy,tx,ty,v,g){
+    var dx=tx-fx,adx=Math.abs(dx),dir=dx<0?-1:1,h=fy-ty;
+    if(g<=0)return velTo(tx,ty,fx,fy,v);
+    var v2=v*v,D=v2*v2-g*(g*adx*adx+2*h*v2),ang;
+    if(D<0)ang=Math.PI/4; else ang=Math.atan2(v2-Math.sqrt(D),g*adx);
+    return {vx:dir*v*Math.cos(ang),vy:-v*Math.sin(ang)};
+  }
+
+  function startCharge(e){
+    e.preventDefault();pointAt(e);
+    if(over||ammo<=0)return;
+    if(T.weapon==="gun"){firing=true;nextShot=0;}      // hold to spray
+    else{charging=true;chargeStart=now;}               // hold to charge
+  }
+  function release(){
+    firing=false;
+    if(!charging)return; charging=false;
+    if(over||ammo<=0)return;
+    var v=velTo(aim.x,aim.y,HAND.x,HAND.y,power());
+    mySpears.push({x:HAND.x,y:HAND.y,vx:v.vx,vy:v.vy,stuck:false,at:0,ang:0,hitTank:false});
+    ammo--;hud();
+  }
+  function tryFlip(){if(over||state==="flip"||now-lastFlip<T.flipCooldown)return;
+    state="flip";flipStart=now;lastFlip=now;}
+  cv.addEventListener("mousedown",startCharge);
+  cv.addEventListener("mousemove",pointAt);
+  window.addEventListener("mouseup",release);
+  cv.addEventListener("touchstart",startCharge,{passive:false});
+  cv.addEventListener("touchmove",function(e){e.preventDefault();pointAt(e);},{passive:false});
+  window.addEventListener("touchend",release);
+  window.addEventListener("keydown",function(e){
+    if(e.code==="Space"){e.preventDefault();tryFlip();}
+    if(e.key==="r"||e.key==="R")reset();});
+  document.getElementById("reset").addEventListener("click",reset);
+
+  // Set a dial from code and make its label agree. One place, so nothing drifts.
+  function setDial(id,val){
+    var el=document.getElementById(id);
+    el.value=val; el.dispatchEvent(new Event("input"));
+  }
+  function preset(p){ for(var k in p) setDial(k,p[k]); reset(); }
+  var bSpear=document.getElementById("w-spear"), bGun=document.getElementById("w-gun");
+  function setWeapon(w){
+    T.weapon=w;
+    bSpear.className = w==="spear" ? "on" : "ghost";
+    bGun.className   = w==="gun"   ? "on" : "ghost";
+    document.getElementById("d-chg").disabled = (w==="gun");
+    document.getElementById("d-gap").disabled = (w==="spear");
+    document.getElementById("d-bspd2").disabled = (w==="spear");
+    document.querySelector('#ammo').nextElementSibling.textContent =
+      w==="gun" ? "bullets" : "spears";
+    // A gun firing 11 times a second would shred an 18-hit tank in under 2s.
+    // So the gun gets far more ammo and the tank gets far more armour.
+    if(w==="gun") preset({"d-ammo":250,"d-need":80});
+    else          preset({"d-ammo":45,"d-need":18});
+  }
+  bSpear.addEventListener("click",function(){setWeapon("spear");});
+  bGun.addEventListener("click",function(){setWeapon("gun");});
+
+  document.getElementById("horde").addEventListener("click",function(){
+    preset({"d-ttot":100,"d-tmax":25,"d-trate":0.6,"d-tthr":7,"d-tspd":26,
+            "d-ammo":170,"d-hp":25,"d-cd":0.4,"d-need":18});
+  });
+  document.getElementById("calm").addEventListener("click",function(){
+    preset({"d-ttot":8,"d-tmax":3,"d-trate":4,"d-tthr":4.5,"d-tspd":34,
+            "d-ammo":45,"d-hp":5,"d-cd":1.2,"d-need":18});
+  });
+
+  function reset(){
+    mySpears=[];shells=[];sparks=[];tank=makeTank();troops=[];nextTroop=now+3;spawned=0;tankBoom=null;
+    ammo=T.ammo;hp=T.maxHp;hits=0;blocked=0;dropped=0;
+    state="stand";lastFlip=-99;charging=false;firing=false;over=null;hud();
+  }
+  function hud(){
+    var h="";for(var i=0;i<T.maxHp;i++)h+=i<hp?"♥":"♡";
+    document.getElementById("hearts").textContent=h;
+    document.getElementById("ammo").textContent=ammo;
+    document.getElementById("hits").textContent=hits+"/"+T.need;
+    document.getElementById("blocked").textContent=blocked;
+    document.getElementById("dropped").textContent=dropped+"/"+T.troopTotal;
+    var el=document.getElementById("flip");
+    if(state==="flip")el.textContent="FLIP!";
+    else{var l=T.flipCooldown-(now-lastFlip);el.textContent=l>0?l.toFixed(1)+"s":"READY";}
+  }
+  function burst(x,y,col,n){
+    for(var i=0;i<n;i++)sparks.push({x:x,y:y,vx:(Math.random()-.5)*300,
+      vy:-Math.random()*260-40,t:now,c:col,sz:3,life:1});
+  }
+
+  // THE TANK BLOWS UP AND IS GONE.
+  var WRECK=["#FFF3C4","#FFD166","#FFB03A","#FF7A45","#F2611C","#C2410C","#5A6472","#2B3138"];
+  function blowUpTank(){
+    tank.dead = true;
+    var bx = tank.x, by = hillY(tank.x) - 26;
+    tankBoom = { x:bx, y:by, t:now };
+    for(var i=0;i<150;i++){
+      var a=Math.random()*Math.PI*2, sp=70+Math.random()*560;
+      sparks.push({x:bx,y:by,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-110,
+                   t:now,life:.8+Math.random()*1.1,sz:2+Math.random()*6,
+                   c:WRECK[(Math.random()*WRECK.length)|0]});
+    }
+  }
+
+  // ---- One slice of time ---------------------------------------------------
+  function step(dt) {
+    if (state === "flip" && now - flipStart > T.flipTime) state = "stand";
+
+    if (!over && !tank.dead) {
+      // THE SLIPPERY HILL.
+      // The engine pushes the tank UP the slope. Gravity drags it back DOWN,
+      // and the steeper and more slippery the hill, the harder it drags.
+      // Every so often the treads lose grip completely and it slides.
+      if (now > tank.gripUntil && Math.random() < (T.slip / 100) * dt * 1.6) {
+        tank.grip = 0; tank.gripUntil = now + 0.35 + Math.random() * 0.5;
+      }
+      if (now > tank.gripUntil) tank.grip = 1;
+
+      var steep = steepness(tank.x);                     // negative = uphill to the left
+      var dragBack = T.slip * 0.03 * Math.abs(steep) * 60;
+      tank.v += (-T.engine * tank.grip + dragBack) * dt;
+      tank.v *= 0.97;
+      tank.x += tank.v * dt;
+      if (tank.x > 880) { tank.x = 880; tank.v = 0; }
+
+      if (tank.x < YOU.x + 46 * TANK) { over = "lose"; overAt = now; }
+
+      if (now > tank.next) {
+        var bx = tank.x - 46 * TANK, by = hillY(tank.x) - 40 * TANK;
+        var v = leadShot(bx, by, YOU.x, YOU.feet - 40, T.shellSpeed, T.gravity);
+        shells.push({ x: bx, y: by, vx: v.vx, vy: v.vy, kind: "shell" });
+        tank.next = now + T.fireRate * (0.8 + Math.random() * 0.4);
+        tank.shake = now;
+      }
+
+    }
+
+    // The soldiers keep fighting whether the tank lives or dies. If this stayed
+    // inside the tank's block, blowing up the tank would freeze them — and you
+    // could never finish the level.
+    if (!over) {
+      // ---- FOOT SOLDIERS: they march up the hill and throw at you ----------
+      if (now > nextTroop && troops.length < T.troopMax && spawned < T.troopTotal) {
+        troops.push({ x: 895, down: false, downAt: 0, spin: 0, vy: 0, y: 0,
+                      next: now + 1.2 + Math.random() * 1.5, step: Math.random() * 6,
+                      stopX: YOU.x + 72 + Math.random() * 175 });
+        spawned++;
+        nextTroop = now + T.troopRate * (0.7 + Math.random() * 0.6);
+      }
+
+      for (var q = troops.length - 1; q >= 0; q--) {
+        var m = troops[q];
+
+        if (m.down) {                                   // knocked over — tumbles down the hill
+          m.vy += 900 * dt; m.y += m.vy * dt; m.spin += dt * 7; m.x += 26 * dt;
+          if (m.y > 160) troops.splice(q, 1);
+          continue;
+        }
+
+        // They march until they're in throwing range, then hold the line.
+        // They never walk into you and vanish — you have to actually kill them.
+        if (m.x > m.stopX) { m.x -= T.troopSpeed * dt; m.step += dt * 9; }
+        else { m.step += dt * 2; }
+
+        if (now > m.next) {                             // and throwing
+          var mx = m.x - 12, my = hillY(m.x) - 42;
+          var mv = leadShot(mx, my, YOU.x, YOU.feet - 40, 640, T.gravity);
+          var w = (Math.random() - .5) * .24, c = Math.cos(w), sn = Math.sin(w);
+          shells.push({ x: mx, y: my, vx: mv.vx * c - mv.vy * sn,
+                        vy: mv.vx * sn + mv.vy * c, kind: "spear", ang: 0 });
+          m.next = now + T.troopThrow * (0.7 + Math.random() * 0.6);
+        }
+      }
+    }
+
+    // MACHINE GUN: while the button is down, spit out a bullet every fireGap.
+    if(firing && T.weapon==="gun" && !over && ammo>0 && now>nextShot){
+      var sp=(Math.random()-.5)*0.045;                  // a little spray
+      var v=velTo(aim.x,aim.y,HAND.x,HAND.y,T.bulletSpeed);
+      var c=Math.cos(sp), sn=Math.sin(sp);
+      mySpears.push({x:HAND.x,y:HAND.y,vx:v.vx*c-v.vy*sn,vy:v.vx*sn+v.vy*c,
+                     stuck:false,at:0,ang:0,hitTank:false,bullet:true});
+      ammo--; nextShot=now+T.fireGap; hud();
+    }
+
+    moveSpears(dt);
+    moveShells(dt);
+
+    for (var i = sparks.length - 1; i >= 0; i--) {
+      var p = sparks[i]; p.vy += 800 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.99;
+      if (now - p.t > (p.life||1)) sparks.splice(i, 1);
+    }
+
+    if (!tank.dead && hits >= T.need) blowUpTank();
+    if (tankBoom && now - tankBoom.t > 1.6) tankBoom = null;
+
+    if (!over) {
+      if (hits >= T.need && dropped >= T.troopTotal) { over = "win"; overAt = now; }
+      else if (hp <= 0) { over = "lose"; overAt = now; }
+      else if (ammo <= 0 && mySpears.length === 0) { over = "empty"; overAt = now; }
+    }
+    hud();
+  }
+
+  function moveSpears(dt) {
+    for (var i = mySpears.length - 1; i >= 0; i--) {
+      var s = mySpears[i];
+      if (s.stuck) { if (now - s.at > T.spearLife) mySpears.splice(i, 1); continue; }
+      var sp = Math.hypot(s.vx, s.vy);
+      var n = Math.min(14, Math.max(1, Math.ceil(sp * dt / 7))), h = dt / n, dead = false;
+
+      for (var k = 0; k < n; k++) {
+        s.vy += T.gravity * h; s.x += s.vx * h; s.y += s.vy * h;
+
+        // PORTER'S BLOCK: pop the shell, and keep flying.
+        for (var j = shells.length - 1; j >= 0; j--) {
+          var b = shells[j];
+          if (Math.hypot(b.x - s.x, b.y - s.y) < 17) {
+            shells.splice(j, 1); blocked++; burst(b.x, b.y, "#FFB03A", 14); hud();
+          }
+        }
+
+        // one spear drops a foot soldier
+        for (var q = 0; q < troops.length; q++) {
+          var m = troops[q];
+          if (m.down) continue;
+          var my = hillY(m.x);
+          if (s.x > m.x - 15 && s.x < m.x + 15 && s.y > my - 70 && s.y < my + 4) {
+            m.down = true; m.downAt = now; m.y = 0; m.vy = -90;
+            dropped++; burst(s.x, s.y, "#9FB3C8", 12);
+            mySpears.splice(i, 1); dead = true; hud(); break;
+          }
+        }
+        if (dead) break;
+
+        if (!over && !s.hitTank && !tank.dead) {
+          var ty = hillY(tank.x);
+          if (s.x > tank.x - 42 * TANK && s.x < tank.x + 42 * TANK &&
+              s.y > ty - 48 * TANK && s.y < ty + 8) {
+            hits++; s.hitTank = true; burst(s.x, s.y, "#FF7A45", 12);
+            mySpears.splice(i, 1); dead = true; hud(); break;
+          }
+        }
+
+        if (s.y >= hillY(s.x)) { s.y = hillY(s.x); s.stuck = true; s.at = now; dead = true; break; }
+        if (s.x < -120 || s.x > W + 140) { mySpears.splice(i, 1); dead = true; break; }
+      }
+      if (!dead) s.ang = Math.atan2(s.vy, s.vx);
+    }
+  }
+
+  function moveShells(dt) {
+    for (var i = shells.length - 1; i >= 0; i--) {
+      var b = shells[i];
+      var sp = Math.hypot(b.vx, b.vy);
+      var n = Math.min(14, Math.max(1, Math.ceil(sp * dt / 7))), h = dt / n;
+      for (var k = 0; k < n; k++) {
+        b.vy += T.gravity * h; b.x += b.vx * h; b.y += b.vy * h;
+        if (state === "stand" && !over &&
+            b.x > YOU.x - 16 && b.x < YOU.x + 16 && b.y > YOU.feet - 72 && b.y < YOU.feet) {
+          hp--; burst(b.x, b.y, "#FF7A45", 10); shells.splice(i, 1); hud(); break;
+        }
+        if (b.y >= hillY(b.x)) { burst(b.x, hillY(b.x), "#FFB03A", 8); shells.splice(i, 1); break; }
+        if (b.x < -80 || b.x > W + 80) { shells.splice(i, 1); break; }
+      }
+    }
+  }
+
+  // ---- Drawing -------------------------------------------------------------
+  var CHALK="#E9E5DB",SHAFT="#D2A263",TIP="#FF7A45",SHELL="#FFB03A",
+      HILL="#2E3A2C",HILL2="#3E4C39",TANKC="#6E7A8A",TANKD="#4A5462";
+
+  function guy(x,feet,tilt,dance){
+    ctx.save();ctx.translate(x,feet-31);ctx.rotate(tilt||0);ctx.translate(0,31);
+    var w=dance?Math.sin(now*9)*13:0, b=dance?Math.abs(Math.sin(now*9))*5:0;
+    ctx.translate(0,-b);
+    ctx.strokeStyle=CHALK;ctx.lineWidth=3;ctx.lineCap="round";ctx.lineJoin="round";
+    ctx.beginPath();
+    ctx.arc(0,-62,9,0,Math.PI*2);
+    ctx.moveTo(0,-53);ctx.lineTo(0,-24);
+    ctx.moveTo(0,-24);ctx.lineTo(-10+w*0.4,0);ctx.moveTo(0,-24);ctx.lineTo(10-w*0.4,0);
+    ctx.moveTo(0,-46);ctx.lineTo(-12,-33-w);ctx.moveTo(0,-46);ctx.lineTo(14,-42+w);
+    ctx.stroke();ctx.restore();
+  }
+  function spear(x,y,ang){
+    ctx.save();ctx.translate(x,y);ctx.rotate(ang);
+    ctx.strokeStyle=SHAFT;ctx.lineWidth=3;ctx.lineCap="round";
+    ctx.beginPath();ctx.moveTo(-26,0);ctx.lineTo(12,0);ctx.stroke();
+    ctx.fillStyle=TIP;ctx.beginPath();
+    ctx.moveTo(24,0);ctx.lineTo(11,-5);ctx.lineTo(11,5);ctx.closePath();ctx.fill();
+    ctx.restore();
+  }
+  function drawTank(){
+    var y=hillY(tank.x), ang=Math.atan(steepness(tank.x));
+    var jolt=now-tank.shake<0.12?(0.12-(now-tank.shake))*40:0;
+    ctx.save();ctx.translate(tank.x+jolt,y);ctx.rotate(ang);ctx.scale(TANK,TANK);
+    ctx.fillStyle=TANKD;ctx.fillRect(-40,-16,80,16);                     // treads
+    ctx.fillStyle="#2B3138";
+    for(var i=-36;i<36;i+=11)ctx.fillRect(i,-14,6,12);
+    ctx.fillStyle=TANKC;ctx.fillRect(-33,-34,66,20);                      // body
+    ctx.fillStyle="#5A6472";ctx.fillRect(-33,-34,66,5);                   // armour plate
+    ctx.fillStyle=TANKD;ctx.fillRect(-18,-47,34,14);                      // turret
+    ctx.fillRect(-52,-44,36,9);                                           // barrel, pointing left
+    ctx.fillStyle="#2B3138";ctx.fillRect(-56,-45,7,11);                   // muzzle
+    if(tank.grip===0){                                                    // slipping!
+      ctx.fillStyle="#FFD166";ctx.font="700 11px 'Source Sans 3',system-ui,sans-serif";
+      ctx.textAlign="center";ctx.fillText("slipping!",0,-58);ctx.textAlign="left";
+    }
+    ctx.restore();
+    var pct=1-hits/T.need, bw=68*TANK;                                    // damage bar
+    ctx.fillStyle="rgba(0,0,0,.5)";ctx.fillRect(tank.x-bw/2,y-84,bw,8);
+    ctx.fillStyle=pct>.5?"#5FBF92":pct>.2?"#FFD166":"#FF7A45";
+    ctx.fillRect(tank.x-bw/2,y-84,bw*Math.max(0,pct),8);
+  }
+  function drawTankBoom(){
+    if(!tankBoom)return;
+    var age=now-tankBoom.t;
+    if(age<0.6){                                   // shockwave ring
+      var rr=age/0.6;
+      ctx.globalAlpha=(1-rr)*0.85;
+      ctx.strokeStyle="#FFE9A8";ctx.lineWidth=(1-rr)*11+1;
+      ctx.beginPath();ctx.arc(tankBoom.x,tankBoom.y,24+rr*240,0,Math.PI*2);ctx.stroke();
+      ctx.globalAlpha=1;
+    }
+    if(age<0.36){                                  // fireball
+      var f=1-age/0.36, R=26+age*340;
+      var gr=ctx.createRadialGradient(tankBoom.x,tankBoom.y,0,tankBoom.x,tankBoom.y,R);
+      gr.addColorStop(0,"rgba(255,255,240,"+f+")");
+      gr.addColorStop(.35,"rgba(255,196,74,"+(f*.85)+")");
+      gr.addColorStop(1,"rgba(242,97,28,0)");
+      ctx.fillStyle=gr;ctx.beginPath();ctx.arc(tankBoom.x,tankBoom.y,R,0,Math.PI*2);ctx.fill();
+    }
+    if(age<0.1){                                   // white flash
+      ctx.fillStyle="rgba(255,248,225,"+(1-age/0.1)*0.5+")";ctx.fillRect(0,0,W,H);
+    }
+  }
+  function shakeAmount(){
+    if(!tankBoom)return 0;
+    var age=now-tankBoom.t;
+    return age<0.5?(1-age/0.5)*16:0;
+  }
+
+  function banner(main,sub,col){
+    ctx.fillStyle="rgba(10,14,24,.74)";ctx.fillRect(0,320,W,132);
+    ctx.textAlign="center";
+    ctx.fillStyle=col;ctx.font="700 46px 'Archivo Black','Arial Black',sans-serif";
+    ctx.fillText(main,W/2,379);
+    ctx.fillStyle="rgba(233,229,219,.8)";ctx.font="600 17px 'Source Sans 3',system-ui,sans-serif";
+    ctx.fillText(sub,W/2,413);ctx.textAlign="left";
+  }
+
+  function draw(){
+    ctx.save();
+    var sh=shakeAmount();
+    if(sh>0)ctx.translate((Math.random()-.5)*sh,(Math.random()-.5)*sh);
+    var sky=ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0,"#1B2438");sky.addColorStop(1,"#42506E");
+    ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+
+    ctx.beginPath();ctx.moveTo(0,H);                                      // the hill
+    for(var x=0;x<=W;x+=6)ctx.lineTo(x,hillY(x));
+    ctx.lineTo(W,H);ctx.closePath();
+    ctx.fillStyle=HILL;ctx.fill();
+    ctx.strokeStyle=HILL2;ctx.lineWidth=4;
+    ctx.beginPath();for(var x2=0;x2<=W;x2+=6){x2?ctx.lineTo(x2,hillY(x2)):ctx.moveTo(0,hillY(0));}
+    ctx.stroke();
+    ctx.strokeStyle="rgba(190,225,255,.28)";ctx.lineWidth=2;              // icy shine
+    for(var x3=0;x3<=W;x3+=34){
+      ctx.beginPath();ctx.moveTo(x3,hillY(x3)+6);ctx.lineTo(x3+16,hillY(x3+16)+6);ctx.stroke();
+    }
+
+    if(!tank.dead && (!over||over!=="lose"))drawTank();
+    drawTankBoom();
+
+    for(var m=0;m<troops.length;m++){                                     // the marching guys
+      var u=troops[m], uy=hillY(u.x)+(u.down?u.y:0);
+      var lean=u.down?u.spin:Math.atan(steepness(u.x))+Math.sin(u.step)*0.06;
+      ctx.save();ctx.translate(u.x,uy-31);ctx.rotate(lean);ctx.translate(0,31);
+      ctx.strokeStyle="#9FB3C8";ctx.lineWidth=3;ctx.lineCap="round";ctx.lineJoin="round";
+      var sw=u.down?0:Math.sin(u.step)*9;
+      ctx.beginPath();
+      ctx.arc(0,-62,9,0,Math.PI*2);
+      ctx.moveTo(0,-53);ctx.lineTo(0,-24);
+      ctx.moveTo(0,-24);ctx.lineTo(-9-sw,0);ctx.moveTo(0,-24);ctx.lineTo(9+sw,0);
+      ctx.moveTo(0,-46);ctx.lineTo(-12+sw*0.5,-33);ctx.moveTo(0,-46);ctx.lineTo(-15,-46);
+      ctx.stroke();ctx.restore();
+    }
+
+    var spin=0,hop=0;
+    if(over==="win"){                     // WINNER DANCE: backflips, over and over
+      spin=-now*T.danceSpeed*Math.PI*2;
+      hop=Math.abs(Math.sin(now*T.danceSpeed*Math.PI))*30;
+    }else if(state==="flip"){
+      spin=-((now-flipStart)/T.flipTime)*Math.PI*2;
+      ctx.strokeStyle="rgba(127,209,255,.75)";ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(YOU.x,YOU.feet-31,40,0,Math.PI*2);ctx.stroke();
+    }
+    guy(YOU.x,YOU.feet-hop,spin,false);
+
+    for(var i=0;i<shells.length;i++){
+      var b=shells[i];
+      if(b.kind==="spear"){                                               // soldier spears
+        ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.atan2(b.vy,b.vx));
+        ctx.strokeStyle=SHAFT;ctx.lineWidth=3;ctx.lineCap="round";
+        ctx.beginPath();ctx.moveTo(-24,0);ctx.lineTo(11,0);ctx.stroke();
+        ctx.fillStyle="#7FD1FF";ctx.beginPath();
+        ctx.moveTo(22,0);ctx.lineTo(10,-5);ctx.lineTo(10,5);ctx.closePath();ctx.fill();
+        ctx.restore();
+      }else{                                                              // tank shells
+        var gl=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,15);
+        gl.addColorStop(0,"rgba(255,200,90,.85)");gl.addColorStop(1,"rgba(255,140,40,0)");
+        ctx.fillStyle=gl;ctx.beginPath();ctx.arc(b.x,b.y,15,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle=SHELL;ctx.beginPath();ctx.arc(b.x,b.y,6,0,Math.PI*2);ctx.fill();
+      }
+    }
+
+    for(i=0;i<sparks.length;i++){
+      var p=sparks[i];ctx.globalAlpha=Math.max(0,1-(now-p.t)/(p.life||1));
+      ctx.fillStyle=p.c;ctx.fillRect(p.x,p.y,p.sz||3,p.sz||3);ctx.globalAlpha=1;
+    }
+
+    if(charging&&T.weapon==="spear"&&ammo>0&&!over){
+      var v=velTo(aim.x,aim.y,HAND.x,HAND.y,power());
+      var gx=HAND.x,gy=HAND.y,gvx=v.vx,gvy=v.vy,gd=1/60;
+      ctx.fillStyle="rgba(255,122,69,.5)";
+      for(i=0;i<180;i++){
+        gvy+=T.gravity*gd;gx+=gvx*gd;gy+=gvy*gd;
+        if(gy>hillY(gx)||gx>W)break;
+        if(i%5===0){ctx.beginPath();ctx.arc(gx,gy,2,0,Math.PI*2);ctx.fill();}
+      }
+      var held=Math.min((now-chargeStart)/T.chargeTime,1);
+      ctx.fillStyle="rgba(0,0,0,.45)";ctx.fillRect(YOU.x-30,YOU.feet-96,60,7);
+      ctx.fillStyle=held>=1?"#FFD166":TIP;ctx.fillRect(YOU.x-30,YOU.feet-96,60*held,7);
+    }
+
+    for(i=0;i<mySpears.length;i++){
+      var s=mySpears[i];
+      if(s.bullet){
+        if(s.stuck)continue;
+        ctx.save();ctx.translate(s.x,s.y);ctx.rotate(s.ang);
+        ctx.strokeStyle="#FFE9A8";ctx.lineWidth=2.5;ctx.lineCap="round";
+        ctx.beginPath();ctx.moveTo(-13,0);ctx.lineTo(4,0);ctx.stroke();
+        ctx.fillStyle="#FFF3C4";ctx.fillRect(3,-1.5,4,3);
+        ctx.restore();
+      } else {
+        spear(s.x,s.y,s.stuck?-Math.PI/3:s.ang);
+      }
+    }
+
+    // You can't land more hits than you have spears. Say so, don't let him find out the hard way.
+    if(T.need+T.troopTotal>T.ammo&&!over){
+      ctx.fillStyle="#FF7A45";ctx.font="700 15px 'Source Sans 3',system-ui,sans-serif";
+      ctx.textAlign="center";
+      ctx.fillText("Impossible: "+T.need+" hits on the tank + "+T.troopTotal+" guys = "+(T.need+T.troopTotal)+" hits, but you only get "+T.ammo+" spears",W/2,40);
+      ctx.textAlign="left";
+    }
+
+    ctx.restore();
+
+    if(over==="win")  banner("YOU WIN","Tank destroyed, squad wiped out. Press R to play again","#FFD166");
+    if(over==="lose") banner("THE TANK GOT YOU","Press R to try again","#FF7A45");
+    if(over==="empty")banner("OUT OF SPEARS","Press R to start the level over","#FF7A45");
+  }
+
+  var last=performance.now();
+  function frame(t){
+    var dt=Math.min((t-last)/1000,.05);last=t;now=t/1000;
+    step(dt);draw();requestAnimationFrame(frame);
+  }
+  now=last/1000;tank=makeTank();hud();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

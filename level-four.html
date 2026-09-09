@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- Porter's game - Level Four: 30 guys over lava, chain reaction of explosions. -->
+<title>Spear Guy — Level Four</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=JetBrains+Mono:wght@400;700&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+  :root{
+    --bg:#EFECE5;--surface:#FFFFFF;--sunk:#F6F4EF;--ink:#181C24;--muted:#6A7080;
+    --line:#DCD7CC;--accent:#C2410C;--flag:#8A6410;--flag-soft:#FBF1D8;
+    --display:"Archivo Black","Arial Black",system-ui,sans-serif;
+    --body:"Source Sans 3",system-ui,-apple-system,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#11141B;--surface:#1A1E29;--sunk:#151922;--ink:#E9E5DB;--muted:#8A92A4;
+    --line:#2A3040;--accent:#FF7A45;--flag:#FFD166;--flag-soft:#2A2413;}}
+  :root[data-theme="dark"]{
+    --bg:#11141B;--surface:#1A1E29;--sunk:#151922;--ink:#E9E5DB;--muted:#8A92A4;
+    --line:#2A3040;--accent:#FF7A45;--flag:#FFD166;--flag-soft:#2A2413;}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.55;
+       padding:28px 20px 68px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:940px;margin:0 auto;display:flex;flex-direction:column;gap:24px}
+  header{display:flex;flex-direction:column;gap:7px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+          color:var(--accent);font-weight:700}
+  h1{font-family:var(--display);font-size:clamp(34px,6.5vw,58px);line-height:.95;margin:0;letter-spacing:-.015em}
+  .sub{color:var(--muted);max-width:62ch;font-size:17px;margin:0}
+  .stage{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#161E30}
+  canvas{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair}
+  .hud{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;padding:11px 15px;
+       background:var(--surface);border-top:1px solid var(--line)}
+  .stat{display:flex;align-items:baseline;gap:7px}
+  .stat b{font-family:var(--mono);font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+  .stat span{font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+  #hearts{font-size:16px;letter-spacing:1px}
+  .spacer{flex:1}
+  button{font-family:var(--body);font-weight:600;font-size:14px;padding:7px 15px;cursor:pointer;
+         border:1px solid var(--line);border-radius:4px;background:transparent;color:var(--ink)}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .keys{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+  .key{background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:13px 16px}
+  .key h4{font-family:var(--display);font-size:13px;margin:0 0 3px}
+  .key p{margin:0;font-size:14px;color:var(--muted)}
+  kbd{font-family:var(--mono);font-size:12px;background:var(--sunk);border:1px solid var(--line);
+      border-radius:3px;padding:1px 6px;color:var(--ink)}
+  .note{border:1px solid var(--line);border-left:4px solid var(--flag);background:var(--flag-soft);
+        padding:15px 19px;border-radius:0 5px 5px 0}
+  .note h4{font-family:var(--display);font-size:15px;margin:0 0 6px}
+  .note p{margin:0 0 7px;max-width:64ch}
+  .note p:last-child{margin:0}
+  .dials{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:19px;
+         background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:19px 21px}
+  .dials-head{grid-column:1/-1;padding-bottom:4px;border-bottom:1px solid var(--line)}
+  .dials-head h2{font-family:var(--display);font-size:15px;margin:0}
+  .dials-head p{margin:2px 0 0;color:var(--muted);font-size:14px}
+  .grp{grid-column:1/-1;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+       text-transform:uppercase;color:var(--accent);font-weight:700;margin-top:3px}
+  .dial label{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:4px}
+  .dial .nm{font-weight:600;font-size:14px}
+  .dial .vl{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+  .dial .hint{color:var(--muted);font-size:12.5px;margin:4px 0 0}
+  input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer}
+  input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">Porter's game · level four · the army over the lava</div>
+    <h1>Thirty Over Lava</h1>
+    <p class="sub">Thirty guys on thirty platforms over the lava, all throwing at you. You don't have to beat thirty of them. You have to hit <strong>one</strong> &mdash; and survive long enough to do it.</p>
+  </header>
+
+  <div class="stage">
+    <canvas id="game" width="900" height="500" aria-label="Level four: thirty enemies on a grid of platforms above lava"></canvas>
+    <div class="hud">
+      <div class="stat"><b id="hearts">♥♥♥♥♥♥♥♥</b><span>health</span></div>
+      <div class="stat"><b id="ammo">25</b><span>spears</span></div>
+      <div class="stat"><b id="standing">30</b><span>still standing</span></div>
+      <div class="stat"><b id="flip">READY</b><span>backflip</span></div>
+      <div class="spacer"></div>
+      <button id="reset">Reset (R)</button>
+    </div>
+  </div>
+
+  <div class="keys">
+    <div class="key"><h4>Aim &amp; throw</h4><p>Move the mouse. Hold to charge, let go.</p></div>
+    <div class="key"><h4>Backflip</h4><p><kbd>Space</kbd>. Untouchable mid-spin.</p></div>
+    <div class="key"><h4>The target</h4><p>Only the guy in the orange ring can be hit. He explodes.</p></div>
+    <div class="key"><h4>Reset</h4><p><kbd>R</kbd>.</p></div>
+  </div>
+
+  <div class="note">
+    <h4>The chain reaction</h4>
+    <p>Guy 1 is in the <strong>bottom-left corner</strong>. Hit him and he <strong>explodes</strong> &mdash; and his blast sets off <strong>everyone touching him</strong>. Those guys explode and set off <em>their</em> neighbours. All 30 go up in a chain reaction.</p>
+    <p>Nobody is on a timer. Every single one blows up <em>because the one next to him blew up</em>. That is a chain reaction &mdash; the same idea as a domino, just louder.</p>
+  </div>
+
+  <div class="dials">
+    <div class="dials-head">
+      <h2>The dials</h2>
+      <p>Porter's spear settings, plus the army.</p>
+    </div>
+
+    <div class="grp">Porter's spear settings</div>
+    <div class="dial"><label><span class="nm">Gravity</span><span class="vl" id="v-grav">200</span></label>
+      <input type="range" id="d-grav" min="100" max="2200" step="50" value="200">
+      <p class="hint">Porter's pick: 200.</p></div>
+    <div class="dial"><label><span class="nm">Max power</span><span class="vl" id="v-pow">2000</span></label>
+      <input type="range" id="d-pow" min="400" max="2600" step="50" value="2000">
+      <p class="hint">Porter's pick: 2000.</p></div>
+    <div class="dial"><label><span class="nm">Charge time</span><span class="vl" id="v-chg">0.2s</span></label>
+      <input type="range" id="d-chg" min="0.1" max="3" step="0.1" value="0.2">
+      <p class="hint">Porter's pick: 0.2s.</p></div>
+    <div class="dial"><label><span class="nm">Your spears</span><span class="vl" id="v-ammo">25</span></label>
+      <input type="range" id="d-ammo" min="1" max="80" step="1" value="25">
+      <p class="hint">You only need <strong>one</strong> to land. The rest are your margin for missing.</p></div>
+
+    <div class="grp">The army</div>
+    <div class="dial"><label><span class="nm">Chain speed</span><span class="vl" id="v-chain">0.08s</span></label>
+      <input type="range" id="d-chain" min="0" max="0.5" step="0.01" value="0.08">
+      <p class="hint">The pause before each blast sets off the next. At 0 the whole grid goes up at once. Slower is more dramatic.</p></div>
+    <div class="dial"><label><span class="nm">How often one throws</span><span class="vl" id="v-rate">0.75s</span></label>
+      <input type="range" id="d-rate" min="0.15" max="3" step="0.05" value="0.75">
+      <p class="hint"><strong>One guy at a time</strong> throws, taking turns. If all 30 threw at once it'd be 10 spears a second and you'd die instantly.</p></div>
+    <div class="dial"><label><span class="nm">Their aim</span><span class="vl" id="v-aim">Sloppy</span></label>
+      <input type="range" id="d-aim" min="0" max="30" step="1" value="14">
+      <p class="hint">How wobbly their throws are.</p></div>
+    <div class="dial"><label><span class="nm">Their throw strength</span><span class="vl" id="v-epow">820</span></label>
+      <input type="range" id="d-epow" min="400" max="1800" step="20" value="820">
+      <p class="hint">The back rows are a long way off.</p></div>
+
+    <div class="dial"><label><span class="nm">Explosion size</span><span class="vl" id="v-boom">Normal</span></label>
+      <input type="range" id="d-boom" min="0.3" max="3" step="0.1" value="1">
+      <p class="hint">How big Guy 1 goes off. Turn it up. Seriously.</p></div>
+
+    <div class="grp">You</div>
+    <div class="dial"><label><span class="nm">Your health</span><span class="vl" id="v-hp">8</span></label>
+      <input type="range" id="d-hp" min="1" max="40" step="1" value="8">
+      <p class="hint">Thirty enemies, so you get extra hearts.</p></div>
+    <div class="dial"><label><span class="nm">Flip cooldown</span><span class="vl" id="v-cd">0.8s</span></label>
+      <input type="range" id="d-cd" min="0" max="4" step="0.1" value="0.8">
+      <p class="hint">Still a placeholder. Porter hasn't picked the flip's real cost.</p></div>
+  </div>
+</div>
+<script>(function () {
+  "use strict";
+  var cv=document.getElementById("game"), ctx=cv.getContext("2d");
+  var W=900,H=500,LAVA=462;
+
+  var T={gravity:200,maxPower:2000,minPower:280,chargeTime:0.2,ammo:25,
+         maxHp:8,chainDelay:0.08,throwRate:0.75,aimWob:14,enemyPower:820,
+         flipCooldown:0.8,flipTime:0.55,spearLife:8,boomSize:1,danceSpeed:1.6};
+
+  var COLS=6, ROWS=5, GUY=0.7;                 // 6 x 5 = 30, drawn at 70% size
+  var PLAT={x:38,y:250,w:150,h:14};
+  var YOU={x:112,feet:PLAT.y};
+  var HAND={x:YOU.x+14,y:YOU.feet-42};
+
+  var army=[], mySpears=[], theirSpears=[], sparks=[];
+  var ammo=T.ammo, hp=T.maxHp, nextThrow=2, now=0, over=null;
+  var charging=false, chargeStart=0, aim={x:600,y:300};
+  var state="stand", flipStart=0, lastFlip=-99, scold=0;
+  var booms=[];                                 // every explosion happening right now
+
+  // Build the grid. Guy 0 is the bottom-left corner — the closest one to you.
+  function makeArmy(){
+    army=[];
+    for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++){
+      army.push({r:r,c:c,x:342+c*95,feet:118+r*70,
+                 phase:"up",startAt:0});
+    }
+  }
+  function at(r,c){ return (r<0||c<0||r>=ROWS||c>=COLS)?null:army[r*COLS+c]; }
+  var FIRST={r:ROWS-1,c:0};                    // bottom-left
+  function firstGuy(){ return at(FIRST.r,FIRST.c); }
+
+  function dial(id,valId,apply,fmt){
+    var el=document.getElementById(id),out=document.getElementById(valId);
+    function upd(){var n=parseFloat(el.value);apply(n);out.textContent=fmt?fmt(n):n;}
+    el.addEventListener("input",upd);upd();
+  }
+  var s2=function(n){return n.toFixed(2)+"s";};
+  dial("d-grav","v-grav",function(n){T.gravity=n;});
+  dial("d-pow","v-pow",function(n){T.maxPower=n;});
+  dial("d-chg","v-chg",function(n){T.chargeTime=n;},function(n){return n.toFixed(1)+"s";});
+  dial("d-ammo","v-ammo",function(n){var f=ammo===T.ammo;T.ammo=n;if(f)ammo=n;if(ammo>n)ammo=n;hud();});
+  dial("d-chain","v-chain",function(n){T.chainDelay=n;},s2);
+  dial("d-rate","v-rate",function(n){T.throwRate=n;},s2);
+  dial("d-aim","v-aim",function(n){T.aimWob=n;},
+       function(n){return n<=3?"Deadly":n<=9?"Sharp":n<=17?"Sloppy":"Awful";});
+  dial("d-epow","v-epow",function(n){T.enemyPower=n;});
+  dial("d-boom","v-boom",function(n){T.boomSize=n;},
+       function(n){return n<=.5?"Small":n<=1.2?"Normal":n<=2?"Big":"HUGE";});
+  dial("d-hp","v-hp",function(n){var f=hp===T.maxHp;T.maxHp=n;if(f)hp=n;if(hp>n)hp=n;hud();});
+  dial("d-cd","v-cd",function(n){T.flipCooldown=n;},
+       function(n){return n===0?"none":n.toFixed(1)+"s";});
+
+  function pointAt(e){var b=cv.getBoundingClientRect(),p=e.touches?e.touches[0]:e;
+    aim.x=(p.clientX-b.left)*(W/b.width);aim.y=(p.clientY-b.top)*(H/b.height);}
+  function power(){return T.minPower+(T.maxPower-T.minPower)*Math.min((now-chargeStart)/T.chargeTime,1);}
+  function velTo(tx,ty,fx,fy,p){var dx=tx-fx,dy=ty-fy,L=Math.hypot(dx,dy)||1;
+    return{vx:dx/L*p,vy:dy/L*p};}
+  function leadShot(fx,fy,tx,ty,v,g){
+    var dx=tx-fx,adx=Math.abs(dx),dir=dx<0?-1:1,h=fy-ty;
+    if(g<=0)return velTo(tx,ty,fx,fy,v);
+    var v2=v*v,D=v2*v2-g*(g*adx*adx+2*h*v2),ang;
+    if(D<0)ang=Math.PI/4;else ang=Math.atan2(v2-Math.sqrt(D),g*adx);
+    return{vx:dir*v*Math.cos(ang),vy:-v*Math.sin(ang)};
+  }
+  function startCharge(e){e.preventDefault();pointAt(e);if(over||ammo<=0)return;charging=true;chargeStart=now;}
+  function release(){
+    if(!charging)return;charging=false;
+    if(over||ammo<=0)return;
+    var v=velTo(aim.x,aim.y,HAND.x,HAND.y,power());
+    mySpears.push({x:HAND.x,y:HAND.y,vx:v.vx,vy:v.vy,stuck:false,at:0,ang:0});
+    ammo--;hud();
+  }
+  function tryFlip(){if(over||state==="flip"||now-lastFlip<T.flipCooldown)return;
+    state="flip";flipStart=now;lastFlip=now;}
+  cv.addEventListener("mousedown",startCharge);
+  cv.addEventListener("mousemove",pointAt);
+  window.addEventListener("mouseup",release);
+  cv.addEventListener("touchstart",startCharge,{passive:false});
+  cv.addEventListener("touchmove",function(e){e.preventDefault();pointAt(e);},{passive:false});
+  window.addEventListener("touchend",release);
+  window.addEventListener("keydown",function(e){
+    if(e.code==="Space"){e.preventDefault();tryFlip();}
+    if(e.key==="r"||e.key==="R")reset();});
+  document.getElementById("reset").addEventListener("click",reset);
+
+  function reset(){
+    makeArmy();mySpears=[];theirSpears=[];sparks=[];
+    ammo=T.ammo;hp=T.maxHp;state="stand";lastFlip=-99;booms=[];
+    charging=false;over=null;scold=0;nextThrow=now+2;hud();
+  }
+  function standing(){var n=0;for(var i=0;i<army.length;i++)if(army[i].phase==="up")n++;return n;}
+  function hud(){
+    var h="",cap=Math.min(T.maxHp,12);
+    for(var i=0;i<cap;i++)h+=i<hp?"♥":"♡";
+    if(T.maxHp>12)h=(hp)+" ♥";
+    document.getElementById("hearts").textContent=h;
+    document.getElementById("ammo").textContent=ammo;
+    document.getElementById("standing").textContent=standing();
+    var el=document.getElementById("flip");
+    if(state==="flip")el.textContent="FLIP!";
+    else{var l=T.flipCooldown-(now-lastFlip);el.textContent=l>0?l.toFixed(1)+"s":"READY";}
+  }
+  function splash(x,y){for(var i=0;i<10;i++)
+    sparks.push({x:x,y:y,vx:(Math.random()-.5)*200,vy:-Math.random()*220-40,
+                 t:now,life:.9,sz:3,c:"#FFC24A"});}
+
+  // NOBODY TIPS OVER. EVERYBODY EXPLODES.
+  // Guy 1 goes off big. His blast sets off his neighbours, theirs set off
+  // their neighbours, and the whole grid goes up in a chain reaction.
+  var BOOM_COLS=["#FFF3C4","#FFD166","#FFB03A","#FF7A45","#F2611C","#C2410C"];
+  function explode(g,big){
+    if(!g||g.phase==="gone")return;
+    var bx=g.x, by=g.feet-30, k=T.boomSize*(big?1:0.66);
+    g.phase="gone";
+    booms.push({x:bx,y:by,t:now,k:k});
+
+    var count=big?110:44;
+    for(var i=0;i<count;i++){
+      var a=Math.random()*Math.PI*2, sp=(60+Math.random()*(big?520:340))*k;
+      sparks.push({x:bx,y:by,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-90,
+                   t:now,life:.6+Math.random()*(big?.9:.6),
+                   sz:2+Math.random()*(big?5:3.4)*k,
+                   c:BOOM_COLS[(Math.random()*BOOM_COLS.length)|0]});
+    }
+    if(sparks.length>1500)sparks.splice(0,sparks.length-1500);   // keep it smooth
+
+    var nb=[at(g.r-1,g.c),at(g.r+1,g.c),at(g.r,g.c-1),at(g.r,g.c+1)];
+    for(var n=0;n<4;n++) if(nb[n]&&nb[n].phase==="up"){
+      nb[n].phase="waiting"; nb[n].startAt=now+T.chainDelay;
+    }
+  }
+
+  function step(dt){
+    if(state==="flip"&&now-flipStart>T.flipTime)state="stand";
+
+    var i,g;
+    for(i=0;i<army.length;i++){
+      g=army[i];
+
+      // his turn has come round — he goes off, and sets off HIS neighbours
+      if(g.phase==="waiting"&&now>=g.startAt) explode(g,false);
+    }
+
+    // ONE guy in the whole army throws at a time. They take turns.
+    if(!over&&now>nextThrow){
+      var up=[];
+      for(i=0;i<army.length;i++)if(army[i].phase==="up")up.push(army[i]);
+      if(up.length){
+        var s=up[(Math.random()*up.length)|0];
+        var fx=s.x-8,fy=s.feet-30;
+        var v=leadShot(fx,fy,YOU.x,YOU.feet-40,T.enemyPower,T.gravity);
+        var w=(Math.random()-.5)*(T.aimWob/100)*2,cc=Math.cos(w),ss=Math.sin(w);
+        theirSpears.push({x:fx,y:fy,vx:v.vx*cc-v.vy*ss,vy:v.vx*ss+v.vy*cc,ang:0});
+      }
+      nextThrow=now+T.throwRate;
+    }
+
+    moveMine(dt);moveTheirs(dt);
+
+    for(i=sparks.length-1;i>=0;i--){
+      var p=sparks[i];p.vy+=800*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=0.99;
+      if(now-p.t>p.life)sparks.splice(i,1);
+    }
+    for(i=booms.length-1;i>=0;i--) if(now-booms[i].t>1.4) booms.splice(i,1);
+
+    if(!over){
+      var allGone=true;
+      for(i=0;i<army.length;i++)if(army[i].phase!=="gone"){allGone=false;break;}
+      if(allGone)over="win";
+      else if(hp<=0)over="lose";
+      else if(ammo<=0&&mySpears.length===0&&firstGuy().phase==="up")over="empty";
+    }
+    hud();
+  }
+
+  function moveMine(dt){
+    for(var i=mySpears.length-1;i>=0;i--){
+      var s=mySpears[i];
+      if(s.stuck){if(now-s.at>T.spearLife)mySpears.splice(i,1);continue;}
+      var sp=Math.hypot(s.vx,s.vy);
+      var n=Math.min(14,Math.max(1,Math.ceil(sp*dt/7))),h=dt/n,dead=false;
+      for(var k=0;k<n;k++){
+        s.vy+=T.gravity*h;s.x+=s.vx*h;s.y+=s.vy*h;
+        for(var j=0;j<army.length;j++){
+          var g=army[j];
+          if(g.phase!=="up")continue;
+          if(Math.abs(g.x-s.x)>30)continue;                  // cheap skip
+          if(s.y>g.feet-64*GUY&&s.y<g.feet+4){
+            if(g===firstGuy()){explode(g,true);mySpears.splice(i,1);}
+            else{scold=now;s.vx*=-0.3;s.vy=-130;}            // no skipping ahead
+            dead=true;break;
+          }
+        }
+        if(dead)break;
+        if(s.y>=LAVA){mySpears.splice(i,1);splash(s.x,LAVA);dead=true;break;}
+        if(s.x<-120||s.x>W+140){mySpears.splice(i,1);dead=true;break;}
+      }
+      if(!dead)s.ang=Math.atan2(s.vy,s.vx);
+    }
+  }
+  function moveTheirs(dt){
+    for(var i=theirSpears.length-1;i>=0;i--){
+      var b=theirSpears[i];
+      var sp=Math.hypot(b.vx,b.vy);
+      var n=Math.min(14,Math.max(1,Math.ceil(sp*dt/7))),h=dt/n;
+      for(var k=0;k<n;k++){
+        b.vy+=T.gravity*h;b.x+=b.vx*h;b.y+=b.vy*h;b.ang=Math.atan2(b.vy,b.vx);
+        if(state==="stand"&&!over&&b.x>YOU.x-15&&b.x<YOU.x+15&&
+           b.y>YOU.feet-72&&b.y<YOU.feet){hp--;theirSpears.splice(i,1);hud();break;}
+        if(b.y>=LAVA){splash(b.x,LAVA);theirSpears.splice(i,1);break;}
+        if(b.x<-80||b.x>W+80){theirSpears.splice(i,1);break;}
+      }
+    }
+  }
+
+  // ---- Drawing -------------------------------------------------------------
+  var CHALK="#E9E5DB",FOEC="#9FB3C8",SHAFT="#D2A263",TIPC="#FF7A45",FOETIP="#7FD1FF",WOOD="#8A6A44";
+  function stick(x,feet,tilt,color,sc){
+    ctx.save();ctx.translate(x,feet);ctx.scale(sc,sc);ctx.translate(0,-31);
+    ctx.rotate(tilt||0);ctx.translate(0,31);
+    ctx.strokeStyle=color;ctx.lineWidth=3/sc*0.62;ctx.lineCap="round";ctx.lineJoin="round";
+    ctx.beginPath();
+    ctx.arc(0,-62,9,0,Math.PI*2);
+    ctx.moveTo(0,-53);ctx.lineTo(0,-24);
+    ctx.moveTo(0,-24);ctx.lineTo(-10,0);ctx.moveTo(0,-24);ctx.lineTo(10,0);
+    ctx.moveTo(0,-46);ctx.lineTo(-12,-33);ctx.moveTo(0,-46);ctx.lineTo(-15,-46);
+    ctx.stroke();ctx.restore();
+  }
+  function spear(x,y,ang,tc,sc){
+    sc=sc||1;
+    ctx.save();ctx.translate(x,y);ctx.rotate(ang);ctx.scale(sc,sc);
+    ctx.strokeStyle=SHAFT;ctx.lineWidth=3;ctx.lineCap="round";
+    ctx.beginPath();ctx.moveTo(-24,0);ctx.lineTo(11,0);ctx.stroke();
+    ctx.fillStyle=tc;ctx.beginPath();
+    ctx.moveTo(22,0);ctx.lineTo(10,-5);ctx.lineTo(10,5);ctx.closePath();ctx.fill();
+    ctx.restore();
+  }
+  function lava(){
+    var gr=ctx.createLinearGradient(0,LAVA-26,0,H);
+    gr.addColorStop(0,"#FFB03A");gr.addColorStop(.35,"#F2611C");gr.addColorStop(1,"#8A1207");
+    ctx.fillStyle=gr;ctx.beginPath();ctx.moveTo(0,H);
+    for(var x=0;x<=W;x+=12)ctx.lineTo(x,LAVA+Math.sin(x/44+now*1.7)*5+Math.sin(x/16-now*2.6)*2.5);
+    ctx.lineTo(W,H);ctx.closePath();ctx.fill();
+    ctx.fillStyle="rgba(255,214,120,.75)";
+    for(var x2=0;x2<=W;x2+=12)
+      ctx.fillRect(x2,LAVA+Math.sin(x2/44+now*1.7)*5+Math.sin(x2/16-now*2.6)*2.5-2,12,2.5);
+  }
+  // The fireball, the shockwave ring, and the white flash.
+  function drawBooms(){
+    for(var b=0;b<booms.length;b++) oneBoom(booms[b]);
+  }
+  function oneBoom(boom){
+    var age=now-boom.t, k=boom.k;
+    if(age<0.55){                                  // shockwave ring pushing outward
+      var rr=age/0.55, rad=(18+rr*190*k);
+      ctx.globalAlpha=(1-rr)*0.85;
+      ctx.strokeStyle="#FFE9A8";ctx.lineWidth=(1-rr)*9*k+1;
+      ctx.beginPath();ctx.arc(boom.x,boom.y,rad,0,Math.PI*2);ctx.stroke();
+      ctx.globalAlpha=1;
+    }
+    if(age<0.32){                                  // the fireball core
+      var f=1-age/0.32, R=(20+age*300)*k;
+      var gr=ctx.createRadialGradient(boom.x,boom.y,0,boom.x,boom.y,R);
+      gr.addColorStop(0,"rgba(255,255,240,"+f+")");
+      gr.addColorStop(.35,"rgba(255,196,74,"+(f*.85)+")");
+      gr.addColorStop(1,"rgba(242,97,28,0)");
+      ctx.fillStyle=gr;ctx.beginPath();ctx.arc(boom.x,boom.y,R,0,Math.PI*2);ctx.fill();
+    }
+    if(age<0.09){                                  // whole screen flashes white
+      ctx.fillStyle="rgba(255,248,225,"+(1-age/0.09)*0.42+")";
+      ctx.fillRect(0,0,W,H);
+    }
+  }
+  // How hard the screen is shaking right now.
+  function shakeAmount(){
+    var m=0;
+    for(var i=0;i<booms.length;i++){
+      var age=now-booms[i].t;
+      if(age<0.45) m=Math.max(m,(1-age/0.45)*13*booms[i].k);
+    }
+    return m;
+  }
+
+  function banner(m,sub,col){
+    ctx.fillStyle="rgba(10,8,14,.76)";ctx.fillRect(0,320,W,128);
+    ctx.textAlign="center";
+    ctx.fillStyle=col;ctx.font="700 44px 'Archivo Black','Arial Black',sans-serif";
+    ctx.fillText(m,W/2,376);
+    ctx.fillStyle="rgba(233,229,219,.8)";ctx.font="600 16px 'Source Sans 3',system-ui,sans-serif";
+    ctx.fillText(sub,W/2,408);ctx.textAlign="left";
+  }
+
+  function draw(){
+    ctx.save();
+    var sh=shakeAmount();
+    if(sh>0)ctx.translate((Math.random()-.5)*sh,(Math.random()-.5)*sh);
+    var sky=ctx.createLinearGradient(0,0,0,LAVA);
+    sky.addColorStop(0,"#2A1420");sky.addColorStop(1,"#5A2A22");
+    ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+    lava();
+
+    ctx.fillStyle=WOOD;ctx.fillRect(PLAT.x,PLAT.y,PLAT.w,PLAT.h);
+    ctx.fillStyle="rgba(0,0,0,.3)";ctx.fillRect(PLAT.x,PLAT.y+10,PLAT.w,4);
+
+    var i,g,first=firstGuy();
+    for(i=0;i<army.length;i++){                       // 100 little platforms
+      g=army[i];
+      if(g.phase==="gone")continue;
+      ctx.fillStyle=WOOD;ctx.fillRect(g.x-27,g.feet,54,8);
+      ctx.fillStyle="rgba(0,0,0,.3)";ctx.fillRect(g.x-27,g.feet+5,54,3);
+    }
+    for(i=0;i<army.length;i++){                       // 100 little guys
+      g=army[i];
+      if(g.phase==="gone")continue;
+      stick(g.x,g.feet,0,FOEC,GUY);
+    }
+    if(first&&first.phase==="up"){
+      ctx.strokeStyle="rgba(255,122,69,.95)";ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(first.x,first.feet-22,32,0,Math.PI*2);ctx.stroke();
+      ctx.fillStyle="#FF7A45";ctx.font="700 11px 'Source Sans 3',system-ui,sans-serif";
+      ctx.font="700 12px 'Source Sans 3',system-ui,sans-serif";
+      ctx.textAlign="center";ctx.fillText("GUY 1",first.x,first.feet+22);ctx.textAlign="left";
+    }
+
+    var spin=0,hop=0;
+    if(over==="win"){                     // WINNER DANCE: backflips, over and over
+      spin=-now*T.danceSpeed*Math.PI*2;
+      hop=Math.abs(Math.sin(now*T.danceSpeed*Math.PI))*30;
+    }else if(state==="flip"){
+      spin=-((now-flipStart)/T.flipTime)*Math.PI*2;
+      ctx.strokeStyle="rgba(127,209,255,.75)";ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(YOU.x,YOU.feet-31,40,0,Math.PI*2);ctx.stroke();
+    }
+    stick(YOU.x,YOU.feet-hop,spin,CHALK,1);
+
+    for(i=0;i<sparks.length;i++){
+      var p=sparks[i];ctx.globalAlpha=Math.max(0,1-(now-p.t)/p.life);
+      ctx.fillStyle=p.c;ctx.fillRect(p.x,p.y,p.sz,p.sz);ctx.globalAlpha=1;
+    }
+    drawBooms();
+
+    if(charging&&ammo>0&&!over){
+      var v=velTo(aim.x,aim.y,HAND.x,HAND.y,power());
+      var gx=HAND.x,gy=HAND.y,gvx=v.vx,gvy=v.vy,gd=1/60;
+      ctx.fillStyle="rgba(255,122,69,.55)";
+      for(i=0;i<180;i++){
+        gvy+=T.gravity*gd;gx+=gvx*gd;gy+=gvy*gd;
+        if(gy>LAVA||gx>W)break;
+        if(i%5===0){ctx.beginPath();ctx.arc(gx,gy,2,0,Math.PI*2);ctx.fill();}
+      }
+      var held=Math.min((now-chargeStart)/T.chargeTime,1);
+      ctx.fillStyle="rgba(0,0,0,.45)";ctx.fillRect(YOU.x-30,YOU.feet-96,60,7);
+      ctx.fillStyle=held>=1?"#FFD166":TIPC;ctx.fillRect(YOU.x-30,YOU.feet-96,60*held,7);
+    }
+
+    for(i=0;i<mySpears.length;i++){var s=mySpears[i];
+      spear(s.x,s.y,s.stuck?-Math.PI/3:s.ang,TIPC);}
+    for(i=0;i<theirSpears.length;i++){var b=theirSpears[i];
+      spear(b.x,b.y,b.ang,FOETIP,.85);}
+
+    if(now-scold<1.2&&!over){
+      ctx.fillStyle="#FFD166";ctx.font="700 21px 'Archivo Black','Arial Black',sans-serif";
+      ctx.textAlign="center";ctx.fillText("HIT GUY 1 — BOTTOM LEFT!",W/2,60);ctx.textAlign="left";
+    }
+    ctx.restore();
+
+    if(over==="win")  banner("YOU WIN","All thirty. Press R to play again","#FFD166");
+    if(over==="lose") banner("THEY GOT YOU","Press R to try again","#FF7A45");
+    if(over==="empty")banner("OUT OF SPEARS","You never hit Guy 1. Press R","#FF7A45");
+  }
+
+  var last=performance.now();
+  function frame(t){
+    var dt=Math.min((t-last)/1000,.05);last=t;now=t/1000;
+    step(dt);draw();requestAnimationFrame(frame);
+  }
+  now=last/1000;makeArmy();hud();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- Porter's game - Level Two. Two modes: domino chain, or knock down all four yourself. -->
+<title>Spear Guy — Level Two</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=JetBrains+Mono:wght@400;700&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+  :root{
+    --bg:#EFECE5; --surface:#FFFFFF; --sunk:#F6F4EF; --ink:#181C24; --muted:#6A7080;
+    --line:#DCD7CC; --accent:#C2410C; --flag:#8A6410; --flag-soft:#FBF1D8;
+    --display:"Archivo Black","Arial Black",system-ui,sans-serif;
+    --body:"Source Sans 3",system-ui,-apple-system,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#11141B; --surface:#1A1E29; --sunk:#151922; --ink:#E9E5DB; --muted:#8A92A4;
+      --line:#2A3040; --accent:#FF7A45; --flag:#FFD166; --flag-soft:#2A2413;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#11141B; --surface:#1A1E29; --sunk:#151922; --ink:#E9E5DB; --muted:#8A92A4;
+    --line:#2A3040; --accent:#FF7A45; --flag:#FFD166; --flag-soft:#2A2413;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.55;
+       padding:28px 20px 68px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:940px;margin:0 auto;display:flex;flex-direction:column;gap:24px}
+  header{display:flex;flex-direction:column;gap:7px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+          color:var(--accent);font-weight:700}
+  h1{font-family:var(--display);font-size:clamp(34px,6.5vw,58px);line-height:.95;margin:0;letter-spacing:-.015em}
+  .sub{color:var(--muted);max-width:62ch;font-size:17px;margin:0}
+  .stage{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#161E30}
+  canvas{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair}
+  .hud{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;padding:11px 15px;
+       background:var(--surface);border-top:1px solid var(--line)}
+  .stat{display:flex;align-items:baseline;gap:7px}
+  .stat b{font-family:var(--mono);font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+  .stat span{font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+  #hearts{font-size:17px;letter-spacing:2px}
+  .spacer{flex:1}
+  button{font-family:var(--body);font-weight:600;font-size:14px;padding:7px 15px;cursor:pointer;
+         border:1px solid var(--line);border-radius:4px;background:transparent;color:var(--ink)}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .keys{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px}
+  .key{background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:13px 16px}
+  .key h4{font-family:var(--display);font-size:13px;margin:0 0 3px}
+  .key p{margin:0;font-size:14px;color:var(--muted)}
+  kbd{font-family:var(--mono);font-size:12px;background:var(--sunk);border:1px solid var(--line);
+      border-radius:3px;padding:1px 6px;color:var(--ink)}
+  .note{border:1px solid var(--line);border-left:4px solid var(--flag);background:var(--flag-soft);
+        padding:15px 19px;border-radius:0 5px 5px 0}
+  .note h4{font-family:var(--display);font-size:15px;margin:0 0 6px}
+  .note p{margin:0 0 7px;max-width:64ch}
+  .note p:last-child{margin:0}
+  .modes{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:19px 21px;
+         display:flex;flex-direction:column;gap:14px}
+  .modes-head h2{font-family:var(--display);font-size:16px;margin:0}
+  .modes-head p{margin:3px 0 0;color:var(--muted);font-size:14px;max-width:64ch}
+  .seg{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:11px}
+  .seg button{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;
+              padding:13px 16px;border:1px solid var(--line);border-radius:5px;background:var(--sunk);
+              cursor:pointer;color:var(--ink);font-family:var(--body)}
+  .seg button b{font-family:var(--display);font-size:14px;font-weight:400}
+  .seg button i{font-style:normal;font-size:13px;color:var(--muted);line-height:1.4}
+  .seg button.on{border-color:var(--accent);border-width:2px;padding:12px 15px;
+                 background:var(--surface);box-shadow:inset 3px 0 0 var(--accent)}
+  .seg button.on b{color:var(--accent)}
+  .seg button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .dials{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:19px;
+         background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:19px 21px}
+  .dials-head{grid-column:1/-1;padding-bottom:4px;border-bottom:1px solid var(--line)}
+  .dials-head h2{font-family:var(--display);font-size:15px;margin:0}
+  .dials-head p{margin:2px 0 0;color:var(--muted);font-size:14px}
+  .grp{grid-column:1/-1;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+       text-transform:uppercase;color:var(--accent);font-weight:700;margin-top:3px}
+  .dial label{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:4px}
+  .dial .nm{font-weight:600;font-size:14px}
+  .dial .vl{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+  .dial .hint{color:var(--muted);font-size:12.5px;margin:4px 0 0}
+  input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer}
+  input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">Porter's game · build step 3 · the chain reaction</div>
+    <h1>Level Two</h1>
+    <p class="sub">Four guys on four platforms, climbing away from you over a lava pit. Hit the first one and watch what happens. Miss him and you'll be trying again.</p>
+  </header>
+
+  <div class="stage">
+    <canvas id="game" width="900" height="500" aria-label="Level two: four enemies on stepped platforms over lava"></canvas>
+    <div class="hud">
+      <div class="stat"><b id="hearts">♥♥♥</b><span>health</span></div>
+      <div class="stat"><b id="ammo">20</b><span>spears</span></div>
+      <div class="stat"><b id="left">4</b><span>still standing</span></div>
+      <div class="stat"><b id="flip">READY</b><span>backflip</span></div>
+      <div class="spacer"></div>
+      <button id="reset">Reset (R)</button>
+    </div>
+  </div>
+
+  <div class="keys">
+    <div class="key"><h4>Aim</h4><p>Move the mouse.</p></div>
+    <div class="key"><h4>Throw</h4><p>Hold to charge, let go to throw.</p></div>
+    <div class="key"><h4>Backflip</h4><p>Press <kbd>Space</kbd>. Untouchable mid-spin.</p></div>
+    <div class="key"><h4>Reset</h4><p>Press <kbd>R</kbd>.</p></div>
+  </div>
+
+  <div class="note">
+    <h4>Porter's rule: no skipping ahead</h4>
+    <p>The <strong>orange ring</strong> marks the only guy you're allowed to knock down right now &mdash; always the closest one still standing. Throw at anybody behind him and your spear bounces off. As each guy goes into the lava, <strong>the ring moves up to the next one.</strong></p>
+    <p>That rule is on in <em>both</em> modes. What changes is whether knocking one guy over takes the rest with him.</p>
+  </div>
+
+  <div class="modes">
+    <div class="modes-head">
+      <h2>Two versions of this level. Which one is the game?</h2>
+      <p>Same four guys, same lava, same rule about no skipping ahead. One switch changes everything about how it plays. Try both before you decide.</p>
+    </div>
+    <div class="seg" role="group" aria-label="Level mode">
+      <button id="m-domino" class="on" aria-pressed="true">
+        <b>Domino</b><i>Hit Guy 1 &mdash; all four go down together</i>
+      </button>
+      <button id="m-each" aria-pressed="false">
+        <b>One at a time</b><i>Knock down all four yourself, front to back</i>
+      </button>
+    </div>
+  </div>
+
+  <div class="dials">
+    <div class="dials-head">
+      <h2>The dials</h2>
+      <p>The spear settings are the ones Porter picked. The chain and lava settings are brand new.</p>
+    </div>
+
+    <div class="grp">Porter's spear settings</div>
+    <div class="dial">
+      <label><span class="nm">Gravity</span><span class="vl" id="v-grav">200</span></label>
+      <input type="range" id="d-grav" min="100" max="2200" step="50" value="200">
+      <p class="hint">Porter's pick: 200. Try 600 &mdash; the guys are stacked at different heights now, so an arc matters more here.</p>
+    </div>
+    <div class="dial">
+      <label><span class="nm">Max power</span><span class="vl" id="v-pow">2000</span></label>
+      <input type="range" id="d-pow" min="400" max="2600" step="50" value="2000">
+      <p class="hint">Porter's pick: 2000.</p>
+    </div>
+    <div class="dial">
+      <label><span class="nm">Charge time</span><span class="vl" id="v-chg">0.2s</span></label>
+      <input type="range" id="d-chg" min="0.1" max="3" step="0.1" value="0.2">
+      <p class="hint">Porter's pick: 0.2s.</p>
+    </div>
+    <div class="dial">
+      <label><span class="nm">Your spears</span><span class="vl" id="v-ammo">20</span></label>
+      <input type="range" id="d-ammo" min="1" max="30" step="1" value="20">
+      <p class="hint">Porter's pick: 20.</p>
+    </div>
+
+    <div class="grp">New — the chain</div>
+    <div class="dial">
+      <label><span class="nm">Chain delay</span><span class="vl" id="v-chain">0.15s</span></label>
+      <input type="range" id="d-chain" min="0" max="1.2" step="0.05" value="0.15">
+      <p class="hint">The pause between one guy finishing his fall-over and knocking the next one. At 0 the wave rips up the steps. Slower is more suspenseful.</p>
+    </div>
+    <div class="dial">
+      <label><span class="nm">Your health</span><span class="vl" id="v-hp">3</span></label>
+      <input type="range" id="d-hp" min="1" max="8" step="1" value="3">
+      <p class="hint">Four of them are throwing at you now. You may want more than 3.</p>
+    </div>
+    <div class="dial">
+      <label><span class="nm">How often they throw</span><span class="vl" id="v-rate">2.6s</span></label>
+      <input type="range" id="d-rate" min="0.5" max="6" step="0.1" value="2.6">
+      <p class="hint">Each guy waits this long between throws. With four of them, small changes here matter a lot.</p>
+    </div>
+    <div class="dial">
+      <label><span class="nm">Their aim</span><span class="vl" id="v-aim">Okay</span></label>
+      <input type="range" id="d-aim" min="0" max="20" step="1" value="8">
+      <p class="hint">How wobbly their throws are.</p>
+    </div>
+    <div class="dial">
+      <label><span class="nm">Their throw strength</span><span class="vl" id="v-epow">760</span></label>
+      <input type="range" id="d-epow" min="350" max="1800" step="50" value="760">
+      <p class="hint">The far guys are a long way off. Too weak and they can't reach you at all.</p>
+    </div>
+    <div class="dial">
+      <label><span class="nm">Flip cooldown</span><span class="vl" id="v-cd">1.2s</span></label>
+      <input type="range" id="d-cd" min="0" max="4" step="0.1" value="1.2">
+      <p class="hint">Still a placeholder. Porter hasn't picked what the flip costs.</p>
+    </div>
+  </div>
+</div>
+<script>(function () {
+  "use strict";
+  var cv = document.getElementById("game"), ctx = cv.getContext("2d");
+  var W = 900, H = 500, LAVA = 440;
+
+  var T = {
+    gravity: 200, maxPower: 2000, minPower: 280, chargeTime: 0.2, ammo: 20,
+    maxHp: 3, enemyRate: 2.6, enemyAim: 8, enemyPower: 760,
+    flipCooldown: 1.2, flipTime: 0.55, spearLife: 10, chainDelay: 0.15, danceSpeed: 1.6,
+    domino: true      // true = one hit topples them all. false = hit all four yourself.
+  };
+
+  var PLAT = { x: 40, y: 250, w: 145, h: 14 };
+  var YOU  = { x: 118, feet: PLAT.y };
+  var HAND = { x: YOU.x + 14, y: YOU.feet - 42 };
+
+  // Four platforms climbing away from you, over the lava.
+  var STEPS = [
+    { x: 395, y: 385, w: 95 },
+    { x: 525, y: 340, w: 95 },
+    { x: 655, y: 295, w: 95 },
+    { x: 785, y: 250, w: 95 }
+  ];
+  var guys = [];
+
+  var mySpears = [], theirSpears = [], sparks = [];
+  var ammo = T.ammo, hp = T.maxHp;
+  var charging = false, chargeStart = 0;
+  var aim = { x: 500, y: 300 }, now = 0, over = null;
+  var state = "stand", flipStart = 0, lastFlip = -99;
+  var scold = 0;               // when to show "HIT THE FIRST ONE"
+  var canReach = true;
+
+  // Each guy is in exactly one PHASE at a time:
+  //   "up"      standing there, throwing at you
+  //   "tipping" falling over sideways, still on his platform
+  //   "falling" tipped past the point of no return, dropping into the lava
+  //   "gone"    splash
+  function makeGuys() {
+    guys = STEPS.map(function (s, i) {
+      return { i: i, x: s.x + s.w / 2, feet: s.y, phase: "up",
+               tipStart: 0, startAt: 0, vy: 0, spin: 0, y: s.y,
+               next: 2.5 + i * 0.6 };
+    });
+  }
+
+  function dial(id, valId, apply, fmt) {
+    var el = document.getElementById(id), out = document.getElementById(valId);
+    function upd() { var n = parseFloat(el.value); apply(n); out.textContent = fmt ? fmt(n) : n; }
+    el.addEventListener("input", upd); upd();
+  }
+  var secs = function (n) { return n.toFixed(2).replace(/0$/, "") + "s"; };
+  dial("d-grav", "v-grav", function (n) { T.gravity = n; });
+  dial("d-pow",  "v-pow",  function (n) { T.maxPower = n; });
+  dial("d-chg",  "v-chg",  function (n) { T.chargeTime = n; }, function (n) { return n.toFixed(1) + "s"; });
+  dial("d-ammo", "v-ammo", function (n) { var f = ammo === T.ammo; T.ammo = n; if (f) ammo = n; if (ammo > n) ammo = n; hud(); });
+  dial("d-chain","v-chain",function (n) { T.chainDelay = n; }, secs);
+  dial("d-hp",   "v-hp",   function (n) { var f = hp === T.maxHp; T.maxHp = n; if (f) hp = n; if (hp > n) hp = n; hud(); });
+  dial("d-rate", "v-rate", function (n) { T.enemyRate = n; }, function (n) { return n.toFixed(1) + "s"; });
+  dial("d-aim",  "v-aim",  function (n) { T.enemyAim = n; },
+       function (n) { return n <= 2 ? "Deadly" : n <= 6 ? "Sharp" : n <= 11 ? "Okay" : n <= 16 ? "Sloppy" : "Awful"; });
+  dial("d-epow", "v-epow", function (n) { T.enemyPower = n; });
+  dial("d-cd",   "v-cd",   function (n) { T.flipCooldown = n; },
+       function (n) { return n === 0 ? "none" : n.toFixed(1) + "s"; });
+
+  function pointAt(e) {
+    var r = cv.getBoundingClientRect(), p = e.touches ? e.touches[0] : e;
+    aim.x = (p.clientX - r.left) * (W / r.width);
+    aim.y = (p.clientY - r.top) * (H / r.height);
+  }
+  function power() { return T.minPower + (T.maxPower - T.minPower) * Math.min((now - chargeStart) / T.chargeTime, 1); }
+  function velTo(tx, ty, fx, fy, p) {
+    var dx = tx - fx, dy = ty - fy, L = Math.hypot(dx, dy) || 1;
+    return { vx: dx / L * p, vy: dy / L * p };
+  }
+  // Solves the throw angle exactly (the fix from Level One).
+  function leadShot(fx, fy, tx, ty, v, g) {
+    var dx = tx - fx, adx = Math.abs(dx), dir = dx < 0 ? -1 : 1, h = fy - ty;
+    if (g <= 0) { canReach = true; return velTo(tx, ty, fx, fy, v); }
+    var v2 = v * v, D = v2 * v2 - g * (g * adx * adx + 2 * h * v2), ang;
+    if (D < 0) { canReach = false; ang = Math.PI / 4; }
+    else { canReach = true; ang = Math.atan2(v2 - Math.sqrt(D), g * adx); }
+    return { vx: dir * v * Math.cos(ang), vy: -v * Math.sin(ang) };
+  }
+
+  function startCharge(e) { e.preventDefault(); pointAt(e); if (over || ammo <= 0) return; charging = true; chargeStart = now; }
+  function release() {
+    if (!charging) return; charging = false;
+    if (over || ammo <= 0) return;
+    var v = velTo(aim.x, aim.y, HAND.x, HAND.y, power());
+    mySpears.push({ x: HAND.x, y: HAND.y, vx: v.vx, vy: v.vy, stuck: false, at: 0, ang: 0 });
+    ammo--; hud();
+  }
+  function tryFlip() {
+    if (over || state === "flip" || now - lastFlip < T.flipCooldown) return;
+    state = "flip"; flipStart = now; lastFlip = now;
+  }
+  cv.addEventListener("mousedown", startCharge);
+  cv.addEventListener("mousemove", pointAt);
+  window.addEventListener("mouseup", release);
+  cv.addEventListener("touchstart", startCharge, { passive: false });
+  cv.addEventListener("touchmove", function (e) { e.preventDefault(); pointAt(e); }, { passive: false });
+  window.addEventListener("touchend", release);
+  window.addEventListener("keydown", function (e) {
+    if (e.code === "Space") { e.preventDefault(); tryFlip(); }
+    if (e.key === "r" || e.key === "R") reset();
+  });
+  document.getElementById("reset").addEventListener("click", reset);
+
+  var bDom = document.getElementById("m-domino"), bEach = document.getElementById("m-each");
+  function setMode(on) {
+    T.domino = on;
+    bDom.classList.toggle("on", on);   bDom.setAttribute("aria-pressed", on);
+    bEach.classList.toggle("on", !on); bEach.setAttribute("aria-pressed", !on);
+    document.getElementById("d-chain").disabled = !on;
+    reset();                            // changing the rules restarts the level
+  }
+  bDom.addEventListener("click", function () { setMode(true); });
+  bEach.addEventListener("click", function () { setMode(false); });
+
+  function reset() {
+    mySpears = []; theirSpears = []; sparks = [];
+    ammo = T.ammo; hp = T.maxHp; makeGuys();
+    state = "stand"; lastFlip = -99; charging = false; over = null; scold = 0;
+    hud();
+  }
+  function standing() { var n = 0; for (var i = 0; i < guys.length; i++) if (guys[i].phase === "up") n++; return n; }
+
+  // The closest guy still standing. He's the only one you're allowed to hit —
+  // that's Porter's "no skipping ahead" rule. As each one goes down, the next
+  // one becomes the front guy.
+  function frontGuy() {
+    for (var i = 0; i < guys.length; i++) if (guys[i].phase === "up") return i;
+    return -1;
+  }
+  function hud() {
+    var h = "";
+    for (var i = 0; i < T.maxHp; i++) h += i < hp ? "♥" : "♡";
+    document.getElementById("hearts").textContent = h;
+    document.getElementById("ammo").textContent = ammo;
+    document.getElementById("left").textContent = standing();
+    var el = document.getElementById("flip");
+    if (state === "flip") el.textContent = "FLIP!";
+    else { var l = T.flipCooldown - (now - lastFlip); el.textContent = l > 0 ? l.toFixed(1) + "s" : "READY"; }
+  }
+
+  // The domino. You only ever knock over Guy 1. He knocks over the next one
+  // as he goes down, that one knocks over the next, and so on up the steps.
+  // Nobody is on a timer — each guy waits for the one before him to fall.
+  var TIP_TIME = 0.38;
+  function knockOver(i) {
+    var g = guys[i];
+    if (!g || g.phase !== "up") return;
+    g.phase = "tipping"; g.tipStart = now;
+    hud();
+  }
+  function knockOver2(i) {          // same thing, for a guy who was waiting his turn
+    var g = guys[i];
+    g.phase = "tipping"; g.tipStart = now;
+    hud();
+  }
+  function splash(x, y) {
+    for (var i = 0; i < 22; i++) {
+      sparks.push({ x: x, y: y, vx: (Math.random() - .5) * 240, vy: -Math.random() * 300 - 60, t: now });
+    }
+  }
+
+  function step(dt) {
+    if (state === "flip" && now - flipStart > T.flipTime) state = "stand";
+
+    var g, i;
+    for (i = 0; i < guys.length; i++) {
+      g = guys[i];
+
+      if (g.phase === "waiting" && now >= g.startAt) knockOver2(i);
+
+      if (g.phase === "tipping") {
+        var t = (now - g.tipStart) / TIP_TIME;
+        g.spin = Math.min(t, 1) * (Math.PI / 2);       // leans over toward the next guy
+        if (t >= 1) {
+          g.phase = "falling"; g.vy = 0;               // past the point of no return
+          if (T.domino) {                               // ...and he takes the next one with him
+            var nxt = guys[i + 1];
+            if (nxt && nxt.phase === "up") { nxt.phase = "waiting"; nxt.startAt = now + T.chainDelay; }
+          }
+        }
+      }
+
+      if (g.phase === "falling") {
+        g.vy += 1400 * dt; g.y += g.vy * dt; g.spin += dt * 6;
+        if (g.y >= LAVA + 14) { g.phase = "gone"; splash(g.x, LAVA); }
+      }
+
+      if (g.phase === "up" && !over && now > g.next) {
+        var fx = g.x - 12, fy = g.feet - 42;
+        var v = leadShot(fx, fy, YOU.x, YOU.feet - 40, T.enemyPower, T.gravity);
+        var w = (Math.random() - .5) * (T.enemyAim / 100) * 2, c = Math.cos(w), s = Math.sin(w);
+        theirSpears.push({ x: fx, y: fy, vx: v.vx * c - v.vy * s, vy: v.vx * s + v.vy * c, stuck: false, at: 0, ang: 0 });
+        g.next = now + T.enemyRate * (0.75 + Math.random() * 0.5);
+      }
+    }
+
+    for (i = sparks.length - 1; i >= 0; i--) {
+      var p = sparks[i];
+      p.vy += 900 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+      if (now - p.t > 1.1) sparks.splice(i, 1);
+    }
+
+    move(mySpears, dt, true);
+    move(theirSpears, dt, false);
+
+    if (!over) {
+      var allGone = true;
+      for (i = 0; i < guys.length; i++) if (guys[i].phase !== "gone") allGone = false;
+      if (allGone) over = "win";
+      else if (hp <= 0) over = "lose";
+      else if (ammo <= 0 && mySpears.length === 0 && standing() > 0) over = "empty";
+    }
+    hud();
+  }
+
+  function move(list, dt, mine) {
+    for (var i = list.length - 1; i >= 0; i--) {
+      var s = list[i];
+      if (s.stuck) { if (now - s.at > T.spearLife) list.splice(i, 1); continue; }
+      var speed = Math.hypot(s.vx, s.vy);
+      var n = Math.min(12, Math.max(1, Math.ceil(speed * dt / 8))), h = dt / n, gone = false;
+
+      for (var k = 0; k < n; k++) {
+        s.vy += T.gravity * h; s.x += s.vx * h; s.y += s.vy * h;
+
+        if (mine) {
+          var front = frontGuy();
+          for (var j = 0; j < guys.length; j++) {
+            var g = guys[j];
+            if (g.phase !== "up") continue;
+            if (s.x > g.x - 20 && s.x < g.x + 20 && s.y > g.feet - 74 && s.y < g.feet) {
+              if (j === front) { knockOver(j); s.stuck = true; s.at = now; }
+              else { scold = now; s.vx *= -0.35; s.vy = -140; }   // bounces off — no skipping ahead
+              gone = true; break;
+            }
+          }
+          if (gone) break;
+        } else if (state === "stand" && !over &&
+                   s.x > YOU.x - 15 && s.x < YOU.x + 15 &&
+                   s.y > YOU.feet - 72 && s.y < YOU.feet) {
+          hp--; list.splice(i, 1); hud(); gone = true; break;
+        }
+
+        if (s.y >= LAVA) { list.splice(i, 1); splash(s.x, LAVA); gone = true; break; }   // lava eats spears
+        if (s.x < -120 || s.x > W + 120) { list.splice(i, 1); gone = true; break; }
+      }
+      if (!gone) s.ang = Math.atan2(s.vy, s.vx);
+    }
+  }
+
+  // ---- Drawing -------------------------------------------------------------
+  var SKY_T = "#2A1420", SKY_B = "#5A2A22", ROCK = "#2A2230", WOOD = "#8A6A44",
+      CHALK = "#E9E5DB", FOEC = "#9FB3C8", SHAFT = "#D2A263", TIP = "#FF7A45", FOETIP = "#7FD1FF";
+
+  function guy(x, feet, tilt, color) {
+    ctx.save(); ctx.translate(x, feet - 31); ctx.rotate(tilt || 0); ctx.translate(0, 31);
+    ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.arc(0, -62, 9, 0, Math.PI * 2);
+    ctx.moveTo(0, -53); ctx.lineTo(0, -24);
+    ctx.moveTo(0, -24); ctx.lineTo(-10, 0); ctx.moveTo(0, -24); ctx.lineTo(10, 0);
+    ctx.moveTo(0, -46); ctx.lineTo(-12, -33); ctx.moveTo(0, -46); ctx.lineTo(14, -42);
+    ctx.stroke(); ctx.restore();
+  }
+  function spear(x, y, ang, tipCol) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    ctx.strokeStyle = SHAFT; ctx.lineWidth = 3; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(12, 0); ctx.stroke();
+    ctx.fillStyle = tipCol; ctx.beginPath();
+    ctx.moveTo(24, 0); ctx.lineTo(11, -5); ctx.lineTo(11, 5); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  function platform(x, y, w) {
+    ctx.fillStyle = WOOD; ctx.fillRect(x, y, w, 14);
+    ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.fillRect(x, y + 10, w, 4);
+  }
+  function lava() {
+    var gr = ctx.createLinearGradient(0, LAVA - 24, 0, H);
+    gr.addColorStop(0, "#FFB03A"); gr.addColorStop(.35, "#F2611C"); gr.addColorStop(1, "#8A1207");
+    ctx.fillStyle = gr;
+    ctx.beginPath(); ctx.moveTo(0, H);
+    for (var x = 0; x <= W; x += 12) {
+      var y = LAVA + Math.sin(x / 46 + now * 1.7) * 5 + Math.sin(x / 17 - now * 2.6) * 2.5;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(255,214,120,.75)";
+    for (var x2 = 0; x2 <= W; x2 += 12) {
+      var y2 = LAVA + Math.sin(x2 / 46 + now * 1.7) * 5 + Math.sin(x2 / 17 - now * 2.6) * 2.5;
+      ctx.fillRect(x2, y2 - 2, 12, 2.5);
+    }
+  }
+  function banner(main, sub, col) {
+    ctx.fillStyle = "rgba(10,8,14,.74)"; ctx.fillRect(0, 320, W, 132);
+    ctx.textAlign = "center";
+    ctx.fillStyle = col; ctx.font = "700 46px 'Archivo Black','Arial Black',sans-serif";
+    ctx.fillText(main, W / 2, 379);
+    ctx.fillStyle = "rgba(233,229,219,.8)"; ctx.font = "600 17px 'Source Sans 3',system-ui,sans-serif";
+    ctx.fillText(sub, W / 2, 413); ctx.textAlign = "left";
+  }
+
+  function draw() {
+    var sky = ctx.createLinearGradient(0, 0, 0, LAVA);
+    sky.addColorStop(0, SKY_T); sky.addColorStop(1, SKY_B);
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = ROCK; ctx.fillRect(0, 0, 26, LAVA); ctx.fillRect(W - 18, 0, 18, LAVA);
+
+    lava();
+    platform(PLAT.x, PLAT.y, PLAT.w);
+    for (var i = 0; i < STEPS.length; i++) platform(STEPS[i].x, STEPS[i].y, STEPS[i].w);
+
+    var spin = 0, hop = 0;
+    if (over === "win") {                 // WINNER DANCE: backflips, over and over
+      spin = -now * T.danceSpeed * Math.PI * 2;
+      hop  = Math.abs(Math.sin(now * T.danceSpeed * Math.PI)) * 30;
+    } else if (state === "flip") {
+      spin = -((now - flipStart) / T.flipTime) * Math.PI * 2;
+      ctx.strokeStyle = "rgba(127,209,255,.75)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(YOU.x, YOU.feet - 31, 40, 0, Math.PI * 2); ctx.stroke();
+    }
+    guy(YOU.x, YOU.feet - hop, spin, CHALK);
+
+    var front = frontGuy();
+    for (i = 0; i < guys.length; i++) {
+      var g = guys[i];
+      if (g.phase === "gone") continue;
+      guy(g.x, g.phase === "falling" ? g.y : g.feet, g.spin, FOEC);
+      if (i === front && g.phase === "up") {   // the only one you can knock down right now
+        ctx.strokeStyle = "rgba(255,122,69,.85)"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(g.x, g.feet - 31, 38, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = "#FF7A45"; ctx.font = "700 12px 'Source Sans 3',system-ui,sans-serif";
+        ctx.textAlign = "center"; ctx.fillText("GUY " + (i + 1), g.x, g.feet - 78); ctx.textAlign = "left";
+      }
+    }
+
+    for (i = 0; i < sparks.length; i++) {
+      var p = sparks[i], a = Math.max(0, 1 - (now - p.t) / 1.1);
+      ctx.globalAlpha = a; ctx.fillStyle = "#FFC24A";
+      ctx.fillRect(p.x, p.y, 3, 3); ctx.globalAlpha = 1;
+    }
+
+    if (charging && ammo > 0 && !over) {
+      var v = velTo(aim.x, aim.y, HAND.x, HAND.y, power());
+      var x = HAND.x, y = HAND.y, vx = v.vx, vy = v.vy, dt = 1 / 60;
+      ctx.fillStyle = "rgba(255,122,69,.5)";
+      for (i = 0; i < 170; i++) {
+        vy += T.gravity * dt; x += vx * dt; y += vy * dt;
+        if (y > LAVA || x > W) break;
+        if (i % 5 === 0) { ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill(); }
+      }
+      var held = Math.min((now - chargeStart) / T.chargeTime, 1);
+      ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.fillRect(YOU.x - 30, YOU.feet - 96, 60, 7);
+      ctx.fillStyle = held >= 1 ? "#FFD166" : TIP; ctx.fillRect(YOU.x - 30, YOU.feet - 96, 60 * held, 7);
+    }
+
+    var s;
+    for (i = 0; i < mySpears.length; i++) { s = mySpears[i]; spear(s.x, s.y, s.stuck ? -Math.PI / 3 : s.ang, TIP); }
+    for (i = 0; i < theirSpears.length; i++) { s = theirSpears[i]; spear(s.x, s.y, s.stuck ? -Math.PI / 3 : s.ang, FOETIP); }
+
+    if (now - scold < 1.3 && !over && front >= 0) {
+      ctx.fillStyle = "#FFD166"; ctx.font = "700 22px 'Archivo Black','Arial Black',sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("HIT GUY " + (front + 1) + " FIRST!", W / 2, 120);
+      ctx.textAlign = "left";
+    }
+    if (!canReach && standing() > 0 && !over) {
+      ctx.fillStyle = "#FFD166"; ctx.font = "700 14px 'Source Sans 3',system-ui,sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("They can't throw that far — raise Their throw strength, or lower Gravity", W / 2, 40);
+      ctx.textAlign = "left";
+    }
+
+    if (over === "win")   banner("YOU WIN", "All four in the lava. Press R to play again", "#FFD166");
+    if (over === "lose")  banner("THEY GOT YOU", "Press R to try again", "#FF7A45");
+    if (over === "empty") banner("OUT OF SPEARS", "Press R to start the level over", "#FF7A45");
+  }
+
+  var last = performance.now();
+  function frame(t) {
+    var dt = Math.min((t - last) / 1000, .05);
+    last = t; now = t / 1000;
+    step(dt); draw(); requestAnimationFrame(frame);
+  }
+  now = last / 1000; makeGuys(); hud();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- Porter's game - Start Screen. Title, START, and the four levels. -->
+<title>Spear Guy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=JetBrains+Mono:wght@400;700&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+  :root{
+    --bg:#EFECE5; --surface:#FFFFFF; --ink:#181C24; --muted:#6A7080;
+    --line:#DCD7CC; --accent:#C2410C; --flag:#8A6410;
+    --display:"Archivo Black","Arial Black",system-ui,sans-serif;
+    --body:"Source Sans 3",system-ui,-apple-system,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#11141B; --surface:#1A1E29; --ink:#E9E5DB; --muted:#8A92A4;
+      --line:#2A3040; --accent:#FF7A45; --flag:#FFD166;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#11141B; --surface:#1A1E29; --ink:#E9E5DB; --muted:#8A92A4;
+    --line:#2A3040; --accent:#FF7A45; --flag:#FFD166;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.55;
+       padding:28px 20px 68px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:940px;margin:0 auto;display:flex;flex-direction:column;gap:24px}
+
+  .stage{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#161E30;
+         position:relative}
+  canvas{display:block;width:100%;height:auto}
+
+  /* everything that sits on top of the canvas */
+  .screen{position:absolute;inset:0;display:flex;flex-direction:column;
+          align-items:center;justify-content:center;gap:26px;text-align:center}
+  .title{font-family:var(--display);color:#E9E5DB;margin:0;
+         font-size:clamp(44px,8vw,86px);line-height:.9;letter-spacing:-.02em;
+         text-shadow:0 4px 0 rgba(0,0,0,.35)}
+  .title span{color:#FF7A45}
+  .tag{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+       color:rgba(233,229,219,.55);margin:0}
+
+  .start{font-family:var(--display);font-size:26px;letter-spacing:.06em;
+         padding:14px 54px;border-radius:6px;cursor:pointer;
+         background:#FFD166;color:#181C24;border:0;
+         box-shadow:0 4px 0 #C29A2E;transition:transform .06s,box-shadow .06s}
+  .start:hover{transform:translateY(2px);box-shadow:0 2px 0 #C29A2E}
+  .start:active{transform:translateY(4px);box-shadow:0 0 0 #C29A2E}
+
+  .levels{display:flex;flex-wrap:wrap;gap:9px;justify-content:center}
+  .levels a{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.1em;
+            text-decoration:none;padding:8px 15px;border-radius:4px;
+            color:rgba(233,229,219,.75);border:1px solid rgba(233,229,219,.28)}
+  .levels a:hover{color:#FF7A45;border-color:#FF7A45}
+
+  footer{color:var(--muted);font-size:14px;text-align:center;margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="stage">
+    <canvas id="c" width="900" height="500"></canvas>
+    <div class="screen">
+      <p class="tag">A game by Porter</p>
+      <h1 class="title">SPEAR <span>GUY</span></h1>
+      <button class="start" id="startBtn">START</button>
+      <div class="levels">
+        <a href="level-one.html">LEVEL 1</a>
+        <a href="level-two.html">LEVEL 2</a>
+        <a href="level-three.html">LEVEL 3</a>
+        <a href="level-four.html">LEVEL 4</a>
+      </div>
+    </div>
+  </div>
+  <footer>Press <b>START</b> to begin at Level 1, or jump to any level.</footer>
+</div>
+
+<script>
+(function () {
+  // ---- START takes you to Level 1 -----------------------------------------
+  document.getElementById("startBtn").onclick = function () {
+    location.href = "level-one.html";
+  };
+  addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") location.href = "level-one.html";
+  });
+
+  // ---- The picture behind the title ---------------------------------------
+  var c = document.getElementById("c"), ctx = c.getContext("2d");
+  var W = 900, H = 500, GROUND = 430;
+  var CHALK = "#E9E5DB", SHAFT = "#D2A263", TIP = "#FF7A45";
+  var now = 0;
+
+  function guy(x, feet, tilt) {
+    ctx.save(); ctx.translate(x, feet - 31); ctx.rotate(tilt || 0); ctx.translate(0, 31);
+    ctx.strokeStyle = CHALK; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.arc(0, -62, 9, 0, Math.PI * 2);
+    ctx.moveTo(0, -53); ctx.lineTo(0, -24);
+    ctx.moveTo(0, -24); ctx.lineTo(-10, 0);
+    ctx.moveTo(0, -24); ctx.lineTo(10, 0);
+    ctx.moveTo(0, -46); ctx.lineTo(-12, -33);
+    ctx.moveTo(0, -46); ctx.lineTo(14, -42);
+    ctx.stroke(); ctx.restore();
+  }
+
+  function spear(x, y, ang) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    ctx.strokeStyle = SHAFT; ctx.lineWidth = 3; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(12, 0); ctx.stroke();
+    ctx.fillStyle = TIP; ctx.beginPath();
+    ctx.moveTo(24, 0); ctx.lineTo(11, -5); ctx.lineTo(11, 5); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  // a spear flies across, over and over
+  var G = 200, SPEED = 620, ANG = -0.38, LOOP = 3.2;
+  function draw() {
+    var sky = ctx.createLinearGradient(0, 0, 0, GROUND);
+    sky.addColorStop(0, "#1B2233"); sky.addColorStop(1, "#2E3A55");
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#2A2416"; ctx.fillRect(0, GROUND, W, H - GROUND);
+    ctx.fillStyle = "#3E4C39"; ctx.fillRect(0, GROUND, W, 4);
+    ctx.fillStyle = "#6B4A2B"; ctx.fillRect(40, 250, 140, 14);
+
+    ctx.globalAlpha = 0.5;
+    guy(118, 250, 0);
+    guy(790, GROUND, 0);
+
+    var t = (now % LOOP);
+    if (t < 2.2) {
+      var vx = Math.cos(ANG) * SPEED, vy = Math.sin(ANG) * SPEED;
+      var x = 150 + vx * t, y = 210 + vy * t + 0.5 * G * t * t;
+      if (y < GROUND) spear(x, y, Math.atan2(vy + G * t, vx));
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  var last = performance.now();
+  function frame(t) { now = t / 1000; draw(); requestAnimationFrame(frame); }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

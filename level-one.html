@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- Porter's game - Level One. Throw angle is now solved exactly, not guessed. -->
+<title>Spear Guy — Level One</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=JetBrains+Mono:wght@400;700&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+  :root{
+    --bg:#EFECE5; --surface:#FFFFFF; --sunk:#F6F4EF; --ink:#181C24; --muted:#6A7080;
+    --line:#DCD7CC; --accent:#C2410C; --accent-soft:#FBE7DC; --flag:#8A6410; --flag-soft:#FBF1D8;
+    --display:"Archivo Black","Arial Black",system-ui,sans-serif;
+    --body:"Source Sans 3",system-ui,-apple-system,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#11141B; --surface:#1A1E29; --sunk:#151922; --ink:#E9E5DB; --muted:#8A92A4;
+      --line:#2A3040; --accent:#FF7A45; --accent-soft:#2B1C15; --flag:#FFD166; --flag-soft:#2A2413;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#11141B; --surface:#1A1E29; --sunk:#151922; --ink:#E9E5DB; --muted:#8A92A4;
+    --line:#2A3040; --accent:#FF7A45; --accent-soft:#2B1C15; --flag:#FFD166; --flag-soft:#2A2413;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.55;
+       padding:28px 20px 68px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:940px;margin:0 auto;display:flex;flex-direction:column;gap:24px}
+
+  header{display:flex;flex-direction:column;gap:7px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+          color:var(--accent);font-weight:700}
+  h1{font-family:var(--display);font-size:clamp(34px,6.5vw,58px);line-height:.95;margin:0;
+     letter-spacing:-.015em}
+  .sub{color:var(--muted);max-width:62ch;font-size:17px;margin:0}
+
+  .stage{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#161E30}
+  canvas{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair}
+  .hud{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;
+       padding:11px 15px;background:var(--surface);border-top:1px solid var(--line)}
+  .stat{display:flex;align-items:baseline;gap:7px}
+  .stat b{font-family:var(--mono);font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+  .stat span{font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+  #hearts{font-size:17px;letter-spacing:2px}
+  .spacer{flex:1}
+  button{font-family:var(--body);font-weight:600;font-size:14px;padding:7px 15px;cursor:pointer;
+         border:1px solid var(--line);border-radius:4px;background:transparent;color:var(--ink)}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .keys{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px}
+  .key{background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:13px 16px}
+  .key h4{font-family:var(--display);font-size:13px;margin:0 0 3px;letter-spacing:.02em}
+  .key p{margin:0;font-size:14px;color:var(--muted)}
+  kbd{font-family:var(--mono);font-size:12px;background:var(--sunk);border:1px solid var(--line);
+      border-radius:3px;padding:1px 6px;color:var(--ink)}
+
+  .note{border-left:4px solid var(--flag);background:var(--flag-soft);border:1px solid var(--line);
+        border-left-width:4px;padding:15px 19px;border-radius:0 5px 5px 0}
+  .note h4{font-family:var(--display);font-size:15px;margin:0 0 6px}
+  .note p{margin:0 0 7px;max-width:64ch}
+  .note p:last-child{margin:0}
+
+  .dials{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:19px;
+         background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:19px 21px}
+  .dials-head{grid-column:1/-1;padding-bottom:4px;border-bottom:1px solid var(--line)}
+  .dials-head h2{font-family:var(--display);font-size:15px;margin:0}
+  .dials-head p{margin:2px 0 0;color:var(--muted);font-size:14px}
+  .grp{grid-column:1/-1;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+       text-transform:uppercase;color:var(--accent);font-weight:700;margin-top:3px}
+  .dial label{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:4px}
+  .dial .nm{font-weight:600;font-size:14px}
+  .dial .vl{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent);
+            font-variant-numeric:tabular-nums}
+  .dial .hint{color:var(--muted);font-size:12.5px;margin:4px 0 0}
+  input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer}
+  input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">Porter's game · build step 2 · state, health &amp; fighting back</div>
+    <h1>Level One</h1>
+    <p class="sub">He throws back now. You have hearts. And you can backflip &mdash; while you're spinning, nothing can touch you. Every number below starts at the one Porter picked.</p>
+  </header>
+
+  <div class="stage">
+    <canvas id="game" width="900" height="500" aria-label="Level one: spear duel"></canvas>
+    <div class="hud">
+      <div class="stat"><b id="hearts">♥♥♥</b><span>health</span></div>
+      <div class="stat"><b id="ammo">20</b><span>spears</span></div>
+      <div class="stat"><b id="flip">READY</b><span>backflip</span></div>
+      <div class="spacer"></div>
+      <button id="reset">Reset (R)</button>
+    </div>
+  </div>
+
+  <div class="keys">
+    <div class="key"><h4>Aim</h4><p>Move the mouse.</p></div>
+    <div class="key"><h4>Throw</h4><p>Hold the mouse button to charge, let go to throw.</p></div>
+    <div class="key"><h4>Backflip</h4><p>Press <kbd>Space</kbd>. You can throw mid-flip.</p></div>
+    <div class="key"><h4>Reset</h4><p>Press <kbd>R</kbd>.</p></div>
+  </div>
+
+  <div class="note">
+    <h4>Two bugs fixed &mdash; both found by Porter</h4>
+    <p><strong>Bug 1: his spears always sailed underneath you.</strong> He was aiming <em>straight at you</em>, and gravity pulled the spear down 92 pixels during the flight &mdash; so it arrived 52 pixels too low, every single throw. Perfect aim at the wrong place.</p>
+    <p><strong>Bug 2: he lobbed spears almost straight up.</strong> The first fix worked by guessing and then improving the guess. On easy throws that's fine. On hard ones the guess ran away upward &mdash; at high gravity he was throwing at <strong>88&deg;</strong>, nearly vertical. Now the angle is <strong>solved exactly</strong> instead of guessed.</p>
+    <p>Set <strong>His aim</strong> to Deadly and he will genuinely hit you. Now the backflip is worth testing.</p>
+  </div>
+
+  <div class="note">
+    <h4>About the backflip cooldown</h4>
+    <p>Porter hasn't picked what the flip costs yet, so it's a <strong>1.2s cooldown</strong> placeholder &mdash; a guess, not a decision.</p>
+    <p>Drag <strong>Flip cooldown</strong> to <strong>0</strong> and you can flip forever. Try it on purpose, notice how fast the level stops being interesting, then find the number where it's actually fun.</p>
+  </div>
+
+  <div class="dials">
+    <div class="dials-head">
+      <h2>The dials</h2>
+      <p>The first four are exactly what Porter chose in Spear Lab. The rest are new and nobody has tested them yet.</p>
+    </div>
+
+    <div class="grp">Porter's spear settings</div>
+
+    <div class="dial">
+      <label><span class="nm">Gravity</span><span class="vl" id="v-grav">200</span></label>
+      <input type="range" id="d-grav" min="100" max="2200" step="50" value="200">
+      <p class="hint">Porter's pick: 200 &mdash; the floatiest setting there is.</p>
+    </div>
+    <div class="dial">
+      <label><span class="nm">Max power</span><span class="vl" id="v-pow">2000</span></label>
+      <input type="range" id="d-pow" min="400" max="2600" step="50" value="2000">
+      <p class="hint">Porter's pick: 2000 &mdash; the strongest arm available.</p>
+    </div>
+    <div class="dial">
+      <label><span class="nm">Charge time</span><span class="vl" id="v-chg">0.2s</span></label>
+      <input type="range" id="d-chg" min="0.1" max="3" step="0.1" value="0.2">
+      <p class="hint">Porter's pick: 0.2s &mdash; nearly instant. Tap and it's gone.</p>
+    </div>
+    <div class="dial">
+      <label><span class="nm">Your spears</span><span class="vl" id="v-ammo">20</span></label>
+      <input type="range" id="d-ammo" min="1" max="30" step="1" value="20">
+      <p class="hint">Porter's pick: 20. (The design doc said 5 for Level 1 &mdash; he changed his mind, which is allowed.)</p>
+    </div>
+
+    <div class="grp">New — nobody has tested these yet</div>
+
+    <div class="dial">
+      <label><span class="nm">Your health</span><span class="vl" id="v-hp">3</span></label>
+      <input type="range" id="d-hp" min="1" max="8" step="1" value="3">
+      <p class="hint">How many hits you survive. Set it to 1 for the original "one hit and you're out" rule.</p>
+    </div>
+    <div class="dial">
+      <label><span class="nm">How often he throws</span><span class="vl" id="v-rate">2.0s</span></label>
+      <input type="range" id="d-rate" min="0.4" max="5" step="0.1" value="2">
+      <p class="hint">Seconds between his throws. Lower = way more dangerous.</p>
+    </div>
+    <div class="dial">
+      <label><span class="nm">His aim</span><span class="vl" id="v-aim">Okay</span></label>
+      <input type="range" id="d-aim" min="0" max="20" step="1" value="7">
+      <p class="hint">How wobbly his throws are. Perfect aim is brutal. Terrible aim is a joke.</p>
+    </div>
+    <div class="dial">
+      <label><span class="nm">His throw strength</span><span class="vl" id="v-epow">700</span></label>
+      <input type="range" id="d-epow" min="350" max="1800" step="50" value="700">
+      <p class="hint">How hard he throws. If you crank gravity way up, he needs more strength to reach you at all.</p>
+    </div>
+    <div class="dial">
+      <label><span class="nm">Flip cooldown</span><span class="vl" id="v-cd">1.2s</span></label>
+      <input type="range" id="d-cd" min="0" max="4" step="0.1" value="1.2">
+      <p class="hint">The wait between backflips. This is the number that decides if the flip is a skill or a cheat.</p>
+    </div>
+  </div>
+</div>
+<script>(function () {
+  "use strict";
+
+  var cv = document.getElementById("game"), ctx = cv.getContext("2d");
+  var W = 900, H = 500, GROUND = 430;
+
+  // ---- Every number that decides how this level feels ---------------------
+  var T = {
+    gravity: 200, maxPower: 2000, minPower: 280, chargeTime: 0.2,
+    ammo: 20, maxHp: 3, enemyRate: 2.0, enemyAim: 7, flipCooldown: 1.2,
+    flipTime: 0.55, spearLife: 10, enemyPower: 700, danceSpeed: 1.6
+  };
+
+  var PLAT = { x: 40, y: 250, w: 140, h: 14 };
+  var YOU  = { x: 118, feet: PLAT.y };
+  var HAND = { x: YOU.x + 14, y: YOU.feet - 42 };
+  var FOE  = { x: 700, feet: GROUND, down: false, downAt: 0, nextThrow: 3 };
+
+  // ---- What is true right now ---------------------------------------------
+  var mySpears = [], hisSpears = [];
+  var ammo = T.ammo, hp = T.maxHp;
+  var charging = false, chargeStart = 0;
+  var aim = { x: 600, y: 300 };
+  var now = 0, over = null, overAt = 0;
+
+  // The player is ALWAYS exactly one of these. This is called STATE.
+  var state = "stand";        // "stand" or "flip"
+  var flipStart = 0, lastFlip = -99;
+
+  // ---- Dials ---------------------------------------------------------------
+  function dial(id, valId, apply, fmt) {
+    var el = document.getElementById(id), out = document.getElementById(valId);
+    function upd() { var n = parseFloat(el.value); apply(n); out.textContent = fmt ? fmt(n) : n; }
+    el.addEventListener("input", upd); upd();
+  }
+  var secs = function (n) { return n.toFixed(1) + "s"; };
+  dial("d-grav", "v-grav", function (n) { T.gravity = n; });
+  dial("d-pow",  "v-pow",  function (n) { T.maxPower = n; });
+  dial("d-chg",  "v-chg",  function (n) { T.chargeTime = n; }, secs);
+  dial("d-ammo", "v-ammo", function (n) { var full = ammo === T.ammo; T.ammo = n; if (full) ammo = n; if (ammo > n) ammo = n; hud(); });
+  dial("d-hp",   "v-hp",   function (n) { var full = hp === T.maxHp; T.maxHp = n; if (full) hp = n; if (hp > n) hp = n; hud(); });
+  dial("d-rate", "v-rate", function (n) { T.enemyRate = n; }, secs);
+  dial("d-aim",  "v-aim",  function (n) { T.enemyAim = n; },
+       function (n) { return n <= 2 ? "Deadly" : n <= 6 ? "Sharp" : n <= 11 ? "Okay" : n <= 16 ? "Sloppy" : "Awful"; });
+  dial("d-epow", "v-epow", function (n) { T.enemyPower = n; });
+  dial("d-cd",   "v-cd",   function (n) { T.flipCooldown = n; },
+       function (n) { return n === 0 ? "none" : n.toFixed(1) + "s"; });
+
+  // ---- Input ---------------------------------------------------------------
+  function pointAt(e) {
+    var r = cv.getBoundingClientRect(), p = e.touches ? e.touches[0] : e;
+    aim.x = (p.clientX - r.left) * (W / r.width);
+    aim.y = (p.clientY - r.top) * (H / r.height);
+  }
+  function power() {
+    return T.minPower + (T.maxPower - T.minPower) * Math.min((now - chargeStart) / T.chargeTime, 1);
+  }
+  function velTo(tx, ty, fx, fy, p) {
+    var dx = tx - fx, dy = ty - fy, len = Math.hypot(dx, dy) || 1;
+    return { vx: dx / len * p, vy: dy / len * p };
+  }
+
+  // Works out the exact angle to throw at so the spear lands on the target.
+  //
+  // (The first version of this guessed, then improved the guess three times.
+  // That works for easy throws, but on hard ones the guess ran away and he
+  // ended up lobbing the spear almost straight up. Porter spotted it. This
+  // version solves the angle properly instead of guessing.)
+  //
+  // It also tells us whether the throw is even POSSIBLE. If he isn't strong
+  // enough to reach you, no angle in the world works, and it says so.
+  var canReach = true;
+  function leadShot(fx, fy, tx, ty, v, g) {
+    var dx = tx - fx, adx = Math.abs(dx), dir = dx < 0 ? -1 : 1;
+    var h = fy - ty;                     // how far ABOVE him the target sits
+    if (g <= 0) { canReach = true; return velTo(tx, ty, fx, fy, v); }
+
+    var v2 = v * v;
+    var D = v2 * v2 - g * (g * adx * adx + 2 * h * v2);
+
+    var ang;
+    if (D < 0) {
+      canReach = false;                  // too far. Nothing will reach.
+      ang = Math.PI / 4;                 // 45° throws the farthest — best he can do
+    } else {
+      canReach = true;
+      ang = Math.atan2(v2 - Math.sqrt(D), g * adx);   // the flatter, faster of the two answers
+    }
+    return { vx: dir * v * Math.cos(ang), vy: -v * Math.sin(ang) };
+  }
+  function startCharge(e) { e.preventDefault(); pointAt(e); if (over || ammo <= 0) return; charging = true; chargeStart = now; }
+  function release() {
+    if (!charging) return;
+    charging = false;
+    if (over || ammo <= 0) return;
+    var v = velTo(aim.x, aim.y, HAND.x, HAND.y, power());
+    mySpears.push({ x: HAND.x, y: HAND.y, vx: v.vx, vy: v.vy, stuck: false, at: 0, ang: 0 });
+    ammo--; hud();
+  }
+  function tryFlip() {
+    if (over || state === "flip") return;
+    if (now - lastFlip < T.flipCooldown) return;   // the cost
+    state = "flip"; flipStart = now; lastFlip = now;
+  }
+  cv.addEventListener("mousedown", startCharge);
+  cv.addEventListener("mousemove", pointAt);
+  window.addEventListener("mouseup", release);
+  cv.addEventListener("touchstart", startCharge, { passive: false });
+  cv.addEventListener("touchmove", function (e) { e.preventDefault(); pointAt(e); }, { passive: false });
+  window.addEventListener("touchend", release);
+  window.addEventListener("keydown", function (e) {
+    if (e.code === "Space") { e.preventDefault(); tryFlip(); }
+    if (e.key === "r" || e.key === "R") reset();
+  });
+  document.getElementById("reset").addEventListener("click", reset);
+
+  function reset() {
+    mySpears = []; hisSpears = []; ammo = T.ammo; hp = T.maxHp;
+    FOE.down = false; FOE.nextThrow = now + 3;
+    state = "stand"; lastFlip = -99; charging = false; over = null;
+    hud();
+  }
+  function hud() {
+    var h = "";
+    for (var i = 0; i < T.maxHp; i++) h += i < hp ? "♥" : "♡";
+    document.getElementById("hearts").textContent = h;
+    document.getElementById("ammo").textContent = ammo;
+    var el = document.getElementById("flip");
+    if (state === "flip") el.textContent = "FLIP!";
+    else {
+      var left = T.flipCooldown - (now - lastFlip);
+      el.textContent = left > 0 ? left.toFixed(1) + "s" : "READY";
+    }
+  }
+
+  // ---- One slice of time ---------------------------------------------------
+  function step(dt) {
+    // the player's state can change on its own
+    if (state === "flip" && now - flipStart > T.flipTime) state = "stand";
+
+    // the enemy decides to throw
+    if (!FOE.down && !over && now > FOE.nextThrow) {
+      var fx = FOE.x - 14, fy = FOE.feet - 42;
+      var v = leadShot(fx, fy, YOU.x, YOU.feet - 40, T.enemyPower, T.gravity);
+      var wob = (Math.random() - 0.5) * (T.enemyAim / 100) * 2;
+      var c = Math.cos(wob), s = Math.sin(wob);
+      hisSpears.push({ x: fx, y: fy, vx: v.vx * c - v.vy * s, vy: v.vx * s + v.vy * c, stuck: false, at: 0, ang: 0 });
+      FOE.nextThrow = now + T.enemyRate;
+    }
+
+    move(mySpears, dt, true);
+    move(hisSpears, dt, false);
+
+    if (!over) {
+      if (FOE.down) { over = "win"; overAt = now; }
+      else if (hp <= 0) { over = "lose"; overAt = now; }
+      else if (ammo <= 0 && mySpears.length === 0) { over = "empty"; overAt = now; }
+    }
+    hud();
+  }
+
+  function move(list, dt, mine) {
+    for (var i = list.length - 1; i >= 0; i--) {
+      var s = list[i];
+      if (s.stuck) { if (now - s.at > T.spearLife) list.splice(i, 1); continue; }
+
+      // A fast spear can jump right OVER somebody in one frame. So if it's
+      // moving fast, we move it in several small steps and check each one.
+      var speed = Math.hypot(s.vx, s.vy);
+      var n = Math.min(12, Math.max(1, Math.ceil(speed * dt / 8)));
+      var h = dt / n, gone = false;
+
+      for (var k = 0; k < n; k++) {
+        s.vy += T.gravity * h;
+        s.x += s.vx * h; s.y += s.vy * h;
+
+        if (mine) {
+          if (!FOE.down && s.x > FOE.x - 22 && s.x < FOE.x + 22 &&
+              s.y > FOE.feet - 74 && s.y < FOE.feet) {
+            FOE.down = true; FOE.downAt = now; s.stuck = true; s.at = now; gone = true; break;
+          }
+        } else if (state === "stand" && !over &&
+                   s.x > YOU.x - 15 && s.x < YOU.x + 15 &&
+                   s.y > YOU.feet - 72 && s.y < YOU.feet) {
+          // THIS is why state matters: mid-flip this whole rule is skipped.
+          hp--; list.splice(i, 1); hud(); gone = true; break;
+        }
+
+        if (s.y >= GROUND) { s.y = GROUND; s.stuck = true; s.at = now; gone = true; break; }
+        if (s.x < -120 || s.x > W + 120) { list.splice(i, 1); gone = true; break; }
+      }
+
+      if (!gone) s.ang = Math.atan2(s.vy, s.vx);
+    }
+  }
+
+  // ---- Drawing -------------------------------------------------------------
+  var SKY_T = "#1B2438", SKY_B = "#33415F", DIRT = "#20291F", GRASS = "#4C7C55",
+      WOOD = "#8A6A44", CHALK = "#E9E5DB", FOEC = "#9FB3C8",
+      SHAFT = "#D2A263", TIP = "#FF7A45", FOETIP = "#7FD1FF";
+
+  function guy(x, feet, tilt, color) {
+    ctx.save(); ctx.translate(x, feet - 31); ctx.rotate(tilt || 0); ctx.translate(0, 31);
+    ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.arc(0, -62, 9, 0, Math.PI * 2);
+    ctx.moveTo(0, -53); ctx.lineTo(0, -24);
+    ctx.moveTo(0, -24); ctx.lineTo(-10, 0);
+    ctx.moveTo(0, -24); ctx.lineTo(10, 0);
+    ctx.moveTo(0, -46); ctx.lineTo(-12, -33);
+    ctx.moveTo(0, -46); ctx.lineTo(14, -42);
+    ctx.stroke(); ctx.restore();
+  }
+  function spear(x, y, ang, tipCol) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    ctx.strokeStyle = SHAFT; ctx.lineWidth = 3; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(12, 0); ctx.stroke();
+    ctx.fillStyle = tipCol; ctx.beginPath();
+    ctx.moveTo(24, 0); ctx.lineTo(11, -5); ctx.lineTo(11, 5); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  function ghost() {
+    var v = velTo(aim.x, aim.y, HAND.x, HAND.y, power());
+    var x = HAND.x, y = HAND.y, vx = v.vx, vy = v.vy, dt = 1 / 60;
+    ctx.fillStyle = "rgba(255,122,69,.5)";
+    for (var i = 0; i < 170; i++) {
+      vy += T.gravity * dt; x += vx * dt; y += vy * dt;
+      if (y > GROUND || x > W) break;
+      if (i % 5 === 0) { ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill(); }
+    }
+  }
+  function banner(main, sub, col) {
+    ctx.fillStyle = "rgba(10,14,24,.72)"; ctx.fillRect(0, 320, W, 130);
+    ctx.textAlign = "center";
+    ctx.fillStyle = col; ctx.font = "700 46px 'Archivo Black','Arial Black',sans-serif";
+    ctx.fillText(main, W / 2, 378);
+    ctx.fillStyle = "rgba(233,229,219,.8)"; ctx.font = "600 17px 'Source Sans 3',system-ui,sans-serif";
+    ctx.fillText(sub, W / 2, 412);
+    ctx.textAlign = "left";
+  }
+
+  function draw() {
+    var sky = ctx.createLinearGradient(0, 0, 0, GROUND);
+    sky.addColorStop(0, SKY_T); sky.addColorStop(1, SKY_B);
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = DIRT; ctx.fillRect(0, GROUND, W, H - GROUND);
+    ctx.fillStyle = GRASS; ctx.fillRect(0, GROUND, W, 4);
+    ctx.fillStyle = WOOD; ctx.fillRect(PLAT.x, PLAT.y, PLAT.w, PLAT.h);
+    ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.fillRect(PLAT.x, PLAT.y + PLAT.h - 4, PLAT.w, 4);
+
+    // YOU — spinning if flipping, and glowing so you can see you're safe
+    var spin = 0, hop = 0;
+    if (over === "win") {                 // WINNER DANCE: backflips, over and over
+      spin = -now * T.danceSpeed * Math.PI * 2;
+      hop  = Math.abs(Math.sin(now * T.danceSpeed * Math.PI)) * 30;
+    } else if (state === "flip") {
+      var t = (now - flipStart) / T.flipTime;
+      spin = -t * Math.PI * 2;
+      ctx.save();
+      ctx.strokeStyle = "rgba(127,209,255,.75)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(YOU.x, YOU.feet - 31, 40, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
+    guy(YOU.x, YOU.feet - hop, spin, CHALK);
+
+    var tilt = FOE.down ? Math.min((now - FOE.downAt) * 4, 1) * (Math.PI / 2) : 0;
+    guy(FOE.x, FOE.feet, tilt, FOEC);
+
+    if (charging && ammo > 0 && !over) {
+      ghost();
+      var held = Math.min((now - chargeStart) / T.chargeTime, 1);
+      var bx = YOU.x - 30, by = YOU.feet - 96;
+      ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.fillRect(bx, by, 60, 7);
+      ctx.fillStyle = held >= 1 ? "#FFD166" : TIP; ctx.fillRect(bx, by, 60 * held, 7);
+    }
+
+    var i, s;
+    for (i = 0; i < mySpears.length; i++) {
+      s = mySpears[i];
+      ctx.globalAlpha = s.stuck && now - s.at > T.spearLife - 2 ? Math.max(0, (T.spearLife - (now - s.at)) / 2) : 1;
+      spear(s.x, s.y, s.stuck ? -Math.PI / 3 : s.ang, TIP);
+      ctx.globalAlpha = 1;
+    }
+    for (i = 0; i < hisSpears.length; i++) {
+      s = hisSpears[i];
+      ctx.globalAlpha = s.stuck && now - s.at > T.spearLife - 2 ? Math.max(0, (T.spearLife - (now - s.at)) / 2) : 1;
+      spear(s.x, s.y, s.stuck ? -Math.PI / 3 : s.ang, FOETIP);
+      ctx.globalAlpha = 1;
+    }
+
+    if (over === "win")   banner("YOU WIN", "Press R to play again", "#FFD166");
+    if (over === "lose")  banner("HE GOT YOU", "Press R to try again", "#FF7A45");
+    if (over === "empty") banner("OUT OF SPEARS", "Press R to start the level over", "#FF7A45");
+
+    if (!over && ammo === T.ammo && hp === T.maxHp) {
+      ctx.fillStyle = "rgba(233,229,219,.55)";
+      ctx.font = "600 15px 'Source Sans 3',system-ui,sans-serif";
+      ctx.fillText("Hold to charge  ·  SPACE to backflip", 300, 90);
+    }
+
+    // If he physically can't throw that far, say so instead of leaving it a mystery.
+    if (!canReach && !FOE.down && !over) {
+      ctx.fillStyle = "#FFD166";
+      ctx.font = "700 14px 'Source Sans 3',system-ui,sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("He can't throw that far — raise His throw strength, or lower Gravity", W / 2, 44);
+      ctx.textAlign = "left";
+    }
+  }
+
+  var last = performance.now();
+  function frame(t) {
+    var dt = Math.min((t - last) / 1000, 0.05);
+    last = t; now = t / 1000;
+    step(dt); draw();
+    requestAnimationFrame(frame);
+  }
+  now = last / 1000; FOE.nextThrow = now + 3; hud();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

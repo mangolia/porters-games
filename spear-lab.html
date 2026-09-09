@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- Porter's game - build step 1: the spear. No libraries. Just HTML, CSS and JavaScript. -->
+<title>Spear Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=JetBrains+Mono:wght@400;700&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+  :root{
+    --bg:#EFECE5; --surface:#FFFFFF; --ink:#181C24; --muted:#6A7080;
+    --line:#DCD7CC; --accent:#C2410C; --accent-soft:#FBE7DC; --good:#2F6B4F;
+    --display:"Archivo Black","Arial Black",system-ui,sans-serif;
+    --body:"Source Sans 3",system-ui,-apple-system,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#11141B; --surface:#1A1E29; --ink:#E9E5DB; --muted:#8A92A4;
+      --line:#2A3040; --accent:#FF7A45; --accent-soft:#2B1C15; --good:#5FBF92;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#11141B; --surface:#1A1E29; --ink:#E9E5DB; --muted:#8A92A4;
+    --line:#2A3040; --accent:#FF7A45; --accent-soft:#2B1C15; --good:#5FBF92;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.55;
+       padding:28px 20px 64px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:940px;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+
+  header{display:flex;flex-direction:column;gap:8px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+           color:var(--accent);font-weight:700}
+  h1{font-family:var(--display);font-size:clamp(34px,6vw,54px);line-height:.98;margin:0;
+     letter-spacing:-.01em;text-wrap:balance}
+  .sub{color:var(--muted);max-width:62ch;font-size:17px;margin:0}
+
+  .stage{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#161E30;
+         box-shadow:0 1px 0 rgba(0,0,0,.04)}
+  canvas{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair}
+
+  .hud{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;
+       padding:11px 15px;background:var(--surface);border-top:1px solid var(--line)}
+  .stat{display:flex;align-items:baseline;gap:7px}
+  .stat b{font-family:var(--mono);font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+  .stat span{font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+  .spacer{flex:1}
+  button{font-family:var(--body);font-weight:600;font-size:14px;padding:7px 15px;cursor:pointer;
+         border:1px solid var(--line);border-radius:4px;background:transparent;color:var(--ink)}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .dials{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;
+         background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:20px 22px}
+  .dials-head{grid-column:1/-1;display:flex;flex-direction:column;gap:3px;
+              padding-bottom:4px;border-bottom:1px solid var(--line)}
+  .dials-head h2{font-family:var(--display);font-size:16px;margin:0;letter-spacing:.01em}
+  .dials-head p{margin:0;color:var(--muted);font-size:14px}
+  .dial label{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:5px}
+  .dial .nm{font-weight:600;font-size:14px}
+  .dial .vl{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent);
+            font-variant-numeric:tabular-nums}
+  .dial .hint{color:var(--muted);font-size:12.5px;margin:5px 0 0}
+  input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer}
+  input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+  .note{border-left:3px solid var(--accent);background:var(--accent-soft);
+        padding:14px 18px;border-radius:0 5px 5px 0}
+  .note p{margin:0 0 8px}
+  .note p:last-child{margin:0}
+  .note strong{font-weight:600}
+  kbd{font-family:var(--mono);font-size:12px;background:var(--surface);border:1px solid var(--line);
+      border-radius:3px;padding:1px 6px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Porter's game · build step 1 of many</div>
+    <h1>Spear Lab</h1>
+    <p class="sub">One spear. Hold to charge, let go to throw. Nothing else in the game exists yet &mdash; and that's on purpose. Throw it fifty times, drag the dials, and find the throw that feels right.</p>
+  </header>
+
+  <div class="stage">
+    <canvas id="game" width="900" height="500" aria-label="Spear throwing practice area"></canvas>
+    <div class="hud">
+      <div class="stat"><b id="ammo">5</b><span>spears left</span></div>
+      <div class="stat"><b id="hits">0</b><span>hits</span></div>
+      <div class="stat"><b id="throws">0</b><span>throws</span></div>
+      <div class="spacer"></div>
+      <button id="reset">Reset (R)</button>
+    </div>
+  </div>
+
+  <div class="note">
+    <p><strong>How to throw:</strong> move the mouse to aim, then <strong>hold the mouse button down</strong> to charge up. The longer you hold, the farther and faster it goes. Let go to throw. Watch the dotted line &mdash; that's where it's going. Press <kbd>R</kbd> to get your spears back.</p>
+    <p>That scarecrow is just something to aim at. He isn't Level&nbsp;1 &mdash; he doesn't throw back and you can't lose. We build one piece at a time.</p>
+  </div>
+
+  <div class="dials">
+    <div class="dials-head">
+      <h2>The dials</h2>
+      <p>Every number in a game is a choice somebody made. These are yours. Change one, throw a few, decide if it's better.</p>
+    </div>
+
+    <div class="dial">
+      <label><span class="nm">Gravity</span><span class="vl" id="v-grav">900</span></label>
+      <input type="range" id="d-grav" min="200" max="2200" step="50" value="900">
+      <p class="hint">How hard the world pulls the spear down. Low = floaty moon throw. High = drops like a rock.</p>
+    </div>
+
+    <div class="dial">
+      <label><span class="nm">Max power</span><span class="vl" id="v-pow">1150</span></label>
+      <input type="range" id="d-pow" min="400" max="2000" step="50" value="1150">
+      <p class="hint">How fast a fully charged spear leaves your hand. This sets how far you can possibly reach.</p>
+    </div>
+
+    <div class="dial">
+      <label><span class="nm">Charge time</span><span class="vl" id="v-chg">1.0s</span></label>
+      <input type="range" id="d-chg" min="0.2" max="3" step="0.1" value="1">
+      <p class="hint">How long you hold for a full-power throw. Short = twitchy. Long = you have to commit.</p>
+    </div>
+
+    <div class="dial">
+      <label><span class="nm">Spears you get</span><span class="vl" id="v-ammo">5</span></label>
+      <input type="range" id="d-ammo" min="1" max="20" step="1" value="5">
+      <p class="hint">Your design doc says 5 for Levels 1 and 2, and 20 for the tank. Try both and see how different they feel.</p>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  "use strict";
+
+  var cv  = document.getElementById("game");
+  var ctx = cv.getContext("2d");
+  var W = 900, H = 500;
+
+  // ---- The numbers that decide how the game feels -------------------------
+  var T = {
+    gravity:    900,   // pixels per second, per second
+    maxPower:  1150,   // speed of a fully charged spear
+    minPower:   280,   // speed of a tap-and-release spear
+    chargeTime:   1,   // seconds of holding to reach full power
+    spearLife:   10,   // seconds a landed spear lies there (Porter's rule)
+    ammo:         5
+  };
+
+  // ---- The world ----------------------------------------------------------
+  var GROUND   = 430;
+  var PLAT     = { x: 40, y: 250, w: 140, h: 14 };   // the floating platform
+  var GUY      = { x: 118, feet: PLAT.y };            // stick guy stands on it
+  var HAND     = { x: GUY.x + 14, y: GUY.feet - 42 }; // spear leaves from here
+  var TARGET   = { x: 700, feet: GROUND, down: false, downAt: 0 };
+
+  // ---- What's happening right now -----------------------------------------
+  var spears = [];
+  var ammo = T.ammo, hits = 0, throws = 0;
+  var charging = false, chargeStart = 0, chargeNow = 0;
+  var aim = { x: 600, y: 300 };
+  var now = 0;
+
+  // ---- Reading the dials --------------------------------------------------
+  function dial(id, valId, apply, fmt) {
+    var el = document.getElementById(id), out = document.getElementById(valId);
+    function upd() {
+      var n = parseFloat(el.value);
+      apply(n);
+      out.textContent = fmt ? fmt(n) : n;
+    }
+    el.addEventListener("input", upd);
+    upd();
+  }
+  dial("d-grav", "v-grav", function (n) { T.gravity = n; });
+  dial("d-pow",  "v-pow",  function (n) { T.maxPower = n; });
+  dial("d-chg",  "v-chg",  function (n) { T.chargeTime = n; }, function (n) { return n.toFixed(1) + "s"; });
+  dial("d-ammo", "v-ammo", function (n) {
+    var wasFull = (ammo === T.ammo);
+    T.ammo = n;
+    if (wasFull) ammo = n;
+    if (ammo > T.ammo) ammo = T.ammo;
+    paintHud();
+  });
+
+  // ---- Aiming and throwing ------------------------------------------------
+  function pointAt(e) {
+    var r = cv.getBoundingClientRect();
+    var p = e.touches ? e.touches[0] : e;
+    aim.x = (p.clientX - r.left) * (W / r.width);
+    aim.y = (p.clientY - r.top)  * (H / r.height);
+  }
+
+  function power() {
+    var held = Math.min((now - chargeStart) / T.chargeTime, 1);
+    return T.minPower + (T.maxPower - T.minPower) * held;
+  }
+
+  function launchVelocity(p) {
+    var dx = aim.x - HAND.x, dy = aim.y - HAND.y;
+    var len = Math.hypot(dx, dy) || 1;
+    return { vx: (dx / len) * p, vy: (dy / len) * p };
+  }
+
+  function startCharge(e) {
+    e.preventDefault();
+    pointAt(e);
+    if (ammo <= 0) return;
+    charging = true;
+    chargeStart = now;
+  }
+
+  function release() {
+    if (!charging) return;
+    charging = false;
+    if (ammo <= 0) return;
+    var v = launchVelocity(power());
+    spears.push({ x: HAND.x, y: HAND.y, vx: v.vx, vy: v.vy, stuck: false, at: 0, ang: 0 });
+    ammo--; throws++;
+    paintHud();
+  }
+
+  cv.addEventListener("mousedown", startCharge);
+  cv.addEventListener("mousemove", pointAt);
+  window.addEventListener("mouseup", release);
+  cv.addEventListener("touchstart", startCharge, { passive: false });
+  cv.addEventListener("touchmove", function (e) { e.preventDefault(); pointAt(e); }, { passive: false });
+  window.addEventListener("touchend", release);
+
+  document.getElementById("reset").addEventListener("click", reset);
+  window.addEventListener("keydown", function (e) {
+    if (e.key === "r" || e.key === "R") reset();
+  });
+
+  function reset() {
+    spears = []; ammo = T.ammo; hits = 0; throws = 0;
+    TARGET.down = false; charging = false;
+    paintHud();
+  }
+
+  function paintHud() {
+    document.getElementById("ammo").textContent = ammo;
+    document.getElementById("hits").textContent = hits;
+    document.getElementById("throws").textContent = throws;
+  }
+
+  // ---- Moving everything forward one slice of time ------------------------
+  function step(dt) {
+    for (var i = spears.length - 1; i >= 0; i--) {
+      var s = spears[i];
+
+      if (s.stuck) {
+        if (now - s.at > T.spearLife) spears.splice(i, 1);   // Porter's 10 seconds
+        continue;
+      }
+
+      s.vy += T.gravity * dt;      // gravity pulls it down a little more each moment
+      s.x  += s.vx * dt;           // then it moves
+      s.y  += s.vy * dt;
+      s.ang = Math.atan2(s.vy, s.vx);   // the spear points the way it's flying
+
+      // did it hit the scarecrow?
+      if (!TARGET.down &&
+          s.x > TARGET.x - 22 && s.x < TARGET.x + 22 &&
+          s.y > TARGET.feet - 74 && s.y < TARGET.feet) {
+        TARGET.down = true; TARGET.downAt = now;
+        hits++; paintHud();
+        s.stuck = true; s.at = now;
+        continue;
+      }
+
+      if (s.y >= GROUND) { s.y = GROUND; s.stuck = true; s.at = now; }
+      if (s.x > W + 120) spears.splice(i, 1);
+    }
+  }
+
+  // ---- Drawing ------------------------------------------------------------
+  var SKY_TOP = "#1B2438", SKY_BOT = "#33415F";
+  var DIRT = "#20291F", GRASS = "#4C7C55", WOOD = "#8A6A44";
+  var CHALK = "#E9E5DB", SHAFT = "#D2A263", TIP = "#FF7A45";
+
+  function stickGuy(x, feet, tilt) {
+    ctx.save();
+    ctx.translate(x, feet);
+    ctx.rotate(tilt || 0);
+    ctx.strokeStyle = CHALK; ctx.lineWidth = 3;
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.arc(0, -62, 9, 0, Math.PI * 2);          // head
+    ctx.moveTo(0, -53); ctx.lineTo(0, -24);      // body
+    ctx.moveTo(0, -24); ctx.lineTo(-10, 0);      // legs
+    ctx.moveTo(0, -24); ctx.lineTo(10, 0);
+    ctx.moveTo(0, -46); ctx.lineTo(-12, -33);    // back arm
+    ctx.moveTo(0, -46); ctx.lineTo(14, -42);     // throwing arm
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function spearShape(x, y, ang) {
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(ang);
+    ctx.strokeStyle = SHAFT; ctx.lineWidth = 3; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(12, 0); ctx.stroke();
+    ctx.fillStyle = TIP;
+    ctx.beginPath();
+    ctx.moveTo(24, 0); ctx.lineTo(11, -5); ctx.lineTo(11, 5);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  function ghostArc() {
+    var v = launchVelocity(power());
+    var x = HAND.x, y = HAND.y, vx = v.vx, vy = v.vy, dt = 1 / 60;
+    ctx.fillStyle = "rgba(255,122,69,.5)";
+    for (var i = 0; i < 150; i++) {
+      vy += T.gravity * dt; x += vx * dt; y += vy * dt;
+      if (y > GROUND || x > W) break;
+      if (i % 5 === 0) { ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill(); }
+    }
+  }
+
+  function chargeBar() {
+    var held = Math.min((now - chargeStart) / T.chargeTime, 1);
+    var bx = GUY.x - 30, by = GUY.feet - 92, bw = 60, bh = 7;
+    ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = held >= 1 ? "#FFD166" : TIP;
+    ctx.fillRect(bx, by, bw * held, bh);
+    ctx.strokeStyle = "rgba(233,229,219,.6)"; ctx.lineWidth = 1;
+    ctx.strokeRect(bx + .5, by + .5, bw - 1, bh - 1);
+  }
+
+  function draw() {
+    var sky = ctx.createLinearGradient(0, 0, 0, GROUND);
+    sky.addColorStop(0, SKY_TOP); sky.addColorStop(1, SKY_BOT);
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+
+    ctx.fillStyle = DIRT; ctx.fillRect(0, GROUND, W, H - GROUND);
+    ctx.fillStyle = GRASS; ctx.fillRect(0, GROUND, W, 4);
+
+    ctx.fillStyle = WOOD;
+    ctx.fillRect(PLAT.x, PLAT.y, PLAT.w, PLAT.h);
+    ctx.fillStyle = "rgba(0,0,0,.28)";
+    ctx.fillRect(PLAT.x, PLAT.y + PLAT.h - 4, PLAT.w, 4);
+
+    stickGuy(GUY.x, GUY.feet, 0);
+
+    var tilt = 0;
+    if (TARGET.down) tilt = Math.min((now - TARGET.downAt) * 4, 1) * (Math.PI / 2);
+    stickGuy(TARGET.x, TARGET.feet, tilt);
+
+    if (charging && ammo > 0) { ghostArc(); chargeBar(); }
+
+    for (var i = 0; i < spears.length; i++) {
+      var s = spears[i];
+      if (s.stuck) {
+        var age = now - s.at;
+        ctx.globalAlpha = age > T.spearLife - 2 ? Math.max(0, (T.spearLife - age) / 2) : 1;
+        spearShape(s.x, s.y, -Math.PI / 3);
+      } else {
+        spearShape(s.x, s.y, s.ang);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.font = "600 15px 'Source Sans 3', system-ui, sans-serif";
+    ctx.fillStyle = "rgba(233,229,219,.55)";
+    if (ammo <= 0 && spears.length === 0) {
+      ctx.fillStyle = "#FFD166";
+      ctx.font = "700 20px 'Source Sans 3', system-ui, sans-serif";
+      ctx.fillText("Out of spears — press R to reset", 300, 90);
+    } else if (throws === 0 && !charging) {
+      ctx.fillText("Hold the mouse button to charge →", 300, 90);
+    }
+  }
+
+  // ---- The loop that never stops -----------------------------------------
+  var last = performance.now();
+  function frame(t) {
+    var dt = Math.min((t - last) / 1000, 0.05);
+    last = t; now = t / 1000;
+    if (charging) chargeNow = power();
+    step(dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+  now = last / 1000;
+  chargeStart = now;
+  paintHud();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
