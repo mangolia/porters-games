@@ -48,6 +48,17 @@
   .stat b{font-family:var(--mono);font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
   .stat span{font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
   .spacer{flex:1}
+  /* The level bar. Same on every page, so you always know where you are. */
+  .levelbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+            background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 13px}
+  .levelbar a{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.08em;
+              text-decoration:none;padding:7px 13px;border-radius:4px;white-space:nowrap;
+              border:1px solid var(--line);color:var(--muted)}
+  .levelbar a:hover{border-color:var(--accent);color:var(--accent)}
+  .levelbar a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .levelbar a.on{border-color:var(--accent);border-width:2px;padding:6px 12px;color:var(--accent)}
+  .levelbar a.home{color:var(--ink)}
+  .levelbar .gap{flex:1}
   button{font-family:var(--body);font-weight:600;font-size:14px;padding:7px 15px;cursor:pointer;
          border:1px solid var(--line);border-radius:4px;background:transparent;color:var(--ink)}
   button:hover{border-color:var(--accent);color:var(--accent)}
@@ -95,6 +106,16 @@
       <button id="reset">Reset (R)</button>
     </div>
   </div>
+
+  <nav class="levelbar" aria-label="Go to a level">
+    <a class="home" href="index.html">← HOME</a>
+    <a href="level-one.html">LEVEL 1</a>
+    <a href="level-two.html">LEVEL 2</a>
+    <a href="level-three.html">LEVEL 3</a>
+    <a href="level-four.html">LEVEL 4</a>
+    <span class="gap"></span>
+    <a class="on" aria-current="page" href="spear-lab.html">SPEAR LAB</a>
+  </nav>
 
   <div class="note">
     <p><strong>How to throw:</strong> move the mouse to aim, then <strong>hold the mouse button down</strong> to charge up. The longer you hold, the farther and faster it goes. Let go to throw. Watch the dotted line &mdash; that's where it's going. Press <kbd>R</kbd> to get your spears back.</p>
